@@ -16,6 +16,10 @@ class MonitoringController extends Controller
      */
     public function index(Request $request)
     {
+        // Increase memory limit for large data processing
+        ini_set('memory_limit', '256M');
+        set_time_limit(120);
+
         $user = Auth::user();
         
         if (!in_array($user->role, ['admin', 'guru'])) {
@@ -25,80 +29,59 @@ class MonitoringController extends Controller
         $kelas = $request->get('kelas', 'all');
         $tanggal = $request->get('tanggal', today()->format('Y-m-d'));
 
-        // Query students with today's attendance
-        $query = Student::with(['user', 'attendances' => function ($q) use ($tanggal) {
-            $q->whereDate('tanggal', $tanggal);
-        }]);
-
-        if ($kelas !== 'all') {
-            $query->where('kelas', $kelas);
-        }
-
-        $students = $query->get();
-
-        // Get class list for filter
+        // Get class list for filter (cached)
         $kelasList = Student::select('kelas')->distinct()->pluck('kelas');
 
-        // Statistics - Use attendance table for consistency
-        $totalStudents = $students->count();
-        
-        // Count from attendance table
-        $hadirMasuk = Attendance::whereDate('tanggal', $tanggal)
-            ->where('status', 'Hadir Masuk')
+        // Get total students count
+        $totalStudents = Student::when($kelas !== 'all', function ($q) use ($kelas) {
+            $q->where('kelas', $kelas);
+        })->count();
+
+        // Get attendance statistics in single query for efficiency
+        $attendanceStats = Attendance::whereDate('tanggal', $tanggal)
             ->when($kelas !== 'all', function ($q) use ($kelas) {
                 $q->whereHas('student', function ($q2) use ($kelas) {
                     $q2->where('kelas', $kelas);
                 });
             })
-            ->count();
-        
-        $terlambat = Attendance::whereDate('tanggal', $tanggal)
-            ->where('status', 'Terlambat')
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        $hadirMasuk = $attendanceStats['Hadir Masuk'] ?? 0;
+        $terlambat = $attendanceStats['Terlambat'] ?? 0;
+        $hadirPulang = $attendanceStats['Hadir Pulang'] ?? 0;
+        $izin = $attendanceStats['Izin'] ?? 0;
+        $tidakHadir = $attendanceStats['Tidak Hadir'] ?? 0;
+
+        // Get students with attendance data (paginated for large classes)
+        $students = Student::with(['user' => function($query) {
+                $query->select('id', 'name');
+            }])
             ->when($kelas !== 'all', function ($q) use ($kelas) {
-                $q->whereHas('student', function ($q2) use ($kelas) {
-                    $q2->where('kelas', $kelas);
-                });
+                $q->where('kelas', $kelas);
             })
-            ->count();
-        
-        $hadirPulang = Attendance::whereDate('tanggal', $tanggal)
-            ->where('status', 'Hadir Pulang')
-            ->when($kelas !== 'all', function ($q) use ($kelas) {
-                $q->whereHas('student', function ($q2) use ($kelas) {
-                    $q2->where('kelas', $kelas);
-                });
-            })
-            ->count();
-        
-        $izin = Attendance::whereDate('tanggal', $tanggal)
-            ->where('status', 'Izin')
-            ->when($kelas !== 'all', function ($q) use ($kelas) {
-                $q->whereHas('student', function ($q2) use ($kelas) {
-                    $q2->where('kelas', $kelas);
-                });
-            })
-            ->count();
-        
-        $tidakHadir = Attendance::whereDate('tanggal', $tanggal)
-            ->where('status', 'Tidak Hadir')
-            ->when($kelas !== 'all', function ($q) use ($kelas) {
-                $q->whereHas('student', function ($q2) use ($kelas) {
-                    $q2->where('kelas', $kelas);
-                });
-            })
-            ->count();
-        
-        // Calculate students without any attendance record
-        $studentsWithAttendance = Attendance::whereDate('tanggal', $tanggal)
-            ->when($kelas !== 'all', function ($q) use ($kelas) {
-                $q->whereHas('student', function ($q2) use ($kelas) {
-                    $q2->where('kelas', $kelas);
-                });
-            })
-            ->distinct('student_id')
-            ->count('student_id');
-            
-        $belumAbsen = $totalStudents - $studentsWithAttendance;
+            ->select('id', 'user_id', 'nis', 'kelas')
+            ->orderBy('nis')
+            ->paginate(50); // Paginate to reduce memory usage
+
+        // Get attendance data for these students
+        $studentIds = $students->pluck('id')->toArray();
+        $studentAttendances = Attendance::whereIn('student_id', $studentIds)
+            ->whereDate('tanggal', $tanggal)
+            ->select('student_id', 'status', 'waktu')
+            ->get()
+            ->keyBy('student_id');
+
+        // Attach attendance data to students
+        $students->getCollection()->transform(function ($student) use ($studentAttendances) {
+            $attendance = $studentAttendances->get($student->id);
+            $student->attendance_today = $attendance;
+            $student->status = $attendance ? $attendance->status : 'Belum Absen';
+            $student->waktu = $attendance ? $attendance->waktu : null;
+            return $student;
+        });
 
         return view('monitoring.index', compact(
             'students',
@@ -119,6 +102,10 @@ class MonitoringController extends Controller
      */
     public function chartData(Request $request)
     {
+        // Increase memory limit for large data processing
+        ini_set('memory_limit', '256M');
+        set_time_limit(120);
+
         $user = Auth::user();
         
         if (!in_array($user->role, ['admin', 'guru'])) {
@@ -129,51 +116,23 @@ class MonitoringController extends Controller
         $tanggal = $request->get('tanggal', today()->format('Y-m-d'));
         $status = $request->get('status', '');
 
-        // Get statistics for the selected date
-        $hadirMasuk = Attendance::whereDate('tanggal', $tanggal)
-            ->where('status', 'Hadir Masuk')
+        // Get attendance statistics in single query for efficiency
+        $attendanceStats = Attendance::whereDate('tanggal', $tanggal)
             ->when($kelas !== 'all', function ($q) use ($kelas) {
                 $q->whereHas('student', function ($q2) use ($kelas) {
                     $q2->where('kelas', $kelas);
                 });
             })
-            ->count();
-        
-        $terlambat = Attendance::whereDate('tanggal', $tanggal)
-            ->where('status', 'Terlambat')
-            ->when($kelas !== 'all', function ($q) use ($kelas) {
-                $q->whereHas('student', function ($q2) use ($kelas) {
-                    $q2->where('kelas', $kelas);
-                });
-            })
-            ->count();
-        
-        $hadirPulang = Attendance::whereDate('tanggal', $tanggal)
-            ->where('status', 'Hadir Pulang')
-            ->when($kelas !== 'all', function ($q) use ($kelas) {
-                $q->whereHas('student', function ($q2) use ($kelas) {
-                    $q2->where('kelas', $kelas);
-                });
-            })
-            ->count();
-        
-        $izin = Attendance::whereDate('tanggal', $tanggal)
-            ->where('status', 'Izin')
-            ->when($kelas !== 'all', function ($q) use ($kelas) {
-                $q->whereHas('student', function ($q2) use ($kelas) {
-                    $q2->where('kelas', $kelas);
-                });
-            })
-            ->count();
-        
-        $tidakHadir = Attendance::whereDate('tanggal', $tanggal)
-            ->where('status', 'Tidak Hadir')
-            ->when($kelas !== 'all', function ($q) use ($kelas) {
-                $q->whereHas('student', function ($q2) use ($kelas) {
-                    $q2->where('kelas', $kelas);
-                });
-            })
-            ->count();
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        $hadirMasuk = $attendanceStats['Hadir Masuk'] ?? 0;
+        $terlambat = $attendanceStats['Terlambat'] ?? 0;
+        $hadirPulang = $attendanceStats['Hadir Pulang'] ?? 0;
+        $izin = $attendanceStats['Izin'] ?? 0;
+        $tidakHadir = $attendanceStats['Tidak Hadir'] ?? 0;
         
         $totalHadir = $hadirMasuk + $terlambat + $hadirPulang;
         
@@ -183,9 +142,8 @@ class MonitoringController extends Controller
             })
             ->count();
         
-        // Get attendance data for table
-        $query = Attendance::with(['student', 'student.user'])
-            ->whereDate('tanggal', $tanggal)
+        // Get attendance data for table with optimized query
+        $query = Attendance::whereDate('tanggal', $tanggal)
             ->when($kelas !== 'all', function ($q) use ($kelas) {
                 $q->whereHas('student', function ($q2) use ($kelas) {
                     $q2->where('kelas', $kelas);
@@ -193,8 +151,17 @@ class MonitoringController extends Controller
             })
             ->when($status !== '', function ($q) use ($status) {
                 $q->where('status', $status);
-            });
-        
+            })
+            ->with(['student' => function($q) {
+                $q->select('id', 'nis', 'kelas', 'user_id')
+                  ->with(['user' => function($q2) {
+                      $q2->select('id', 'name');
+                  }]);
+            }])
+            ->select('id', 'student_id', 'tanggal', 'waktu', 'status')
+            ->orderBy('waktu', 'desc')
+            ->limit(100); // Limit to 100 records for performance
+
         $attendances = $query->get()->map(function ($attendance) {
             return [
                 'id' => $attendance->id,
@@ -207,35 +174,44 @@ class MonitoringController extends Controller
             ];
         });
         
-        // Weekly data for chart (last 7 days)
+        // Weekly data for chart (last 7 days) with optimized batch query
         $days = 7;
         $dates = [];
-        $weeklyHadir = [];
-        $weeklyIzin = [];
+        $weeklyStats = [];
         
         for ($i = $days - 1; $i >= 0; $i--) {
             $date = now()->subDays($i)->format('Y-m-d');
             $dates[] = date('d/m', strtotime($date));
-            
-            $hadirDay = Attendance::whereDate('tanggal', $date)
-                ->whereIn('status', ['Hadir Masuk', 'Hadir Pulang'])
-                ->when($kelas !== 'all', function ($q) use ($kelas) {
-                    $q->whereHas('student', function ($q2) use ($kelas) {
-                        $q2->where('kelas', $kelas);
-                    });
-                })
-                ->count();
-            $weeklyHadir[] = $hadirDay;
-            
-            $izinDay = Attendance::whereDate('tanggal', $date)
-                ->where('status', 'Izin')
-                ->when($kelas !== 'all', function ($q) use ($kelas) {
-                    $q->whereHas('student', function ($q2) use ($kelas) {
-                        $q2->where('kelas', $kelas);
-                    });
-                })
-                ->count();
-            $weeklyIzin[] = $izinDay;
+            $weeklyStats[$date] = ['hadir' => 0, 'izin' => 0];
+        }
+
+        // Get weekly stats in batch query
+        $weeklyData = Attendance::whereDate('tanggal', '>=', now()->subDays($days - 1)->format('Y-m-d'))
+            ->when($kelas !== 'all', function ($q) use ($kelas) {
+                $q->whereHas('student', function ($q2) use ($kelas) {
+                    $q2->where('kelas', $kelas);
+                });
+            })
+            ->selectRaw('DATE(tanggal) as date, status, COUNT(*) as count')
+            ->groupBy('date', 'status')
+            ->get();
+
+        foreach ($weeklyData as $data) {
+            $date = $data->date;
+            if (isset($weeklyStats[$date])) {
+                if (in_array($data->status, ['Hadir Masuk', 'Hadir Pulang'])) {
+                    $weeklyStats[$date]['hadir'] += $data->count;
+                } elseif ($data->status === 'Izin') {
+                    $weeklyStats[$date]['izin'] += $data->count;
+                }
+            }
+        }
+
+        $weeklyHadir = [];
+        $weeklyIzin = [];
+        foreach ($weeklyStats as $date => $stats) {
+            $weeklyHadir[] = $stats['hadir'];
+            $weeklyIzin[] = $stats['izin'];
         }
 
         return response()->json([

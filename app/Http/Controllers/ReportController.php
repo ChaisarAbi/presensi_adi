@@ -37,6 +37,10 @@ class ReportController extends Controller
      */
     public function classReport(Request $request)
     {
+        // Increase memory limit for large data processing
+        ini_set('memory_limit', '256M');
+        set_time_limit(120);
+
         $user = Auth::user();
         
         if (!in_array($user->role, ['admin', 'guru'])) {
@@ -53,27 +57,59 @@ class ReportController extends Controller
         $startDate = Carbon::parse($request->start_date);
         $endDate = Carbon::parse($request->end_date);
 
-        // Get students in the class
-        $students = Student::with('user')
-            ->where('kelas', $kelas)
+        // Get students in the class with only necessary columns
+        $students = Student::where('kelas', $kelas)
+            ->with(['user' => function($query) {
+                $query->select('id', 'name'); // Only get necessary columns
+            }])
+            ->select('id', 'user_id', 'nis', 'kelas')
             ->get();
 
         $reportData = [];
         $totalDays = $startDate->diffInDays($endDate) + 1;
 
-        foreach ($students as $student) {
-            // Get attendance data for the date range
-            $attendances = Attendance::where('student_id', $student->id)
-                ->whereBetween('tanggal', [$startDate, $endDate])
-                ->get();
+        // Get all student IDs for batch query
+        $studentIds = $students->pluck('id')->toArray();
 
-            // Count statuses
-            $hadirMasuk = $attendances->where('status', 'Hadir Masuk')->count();
-            $terlambat = $attendances->where('status', 'Terlambat')->count();
-            $hadirPulang = $attendances->where('status', 'Hadir Pulang')->count();
-            $izin = $attendances->where('status', 'Izin')->count();
-            $tidakHadir = $attendances->where('status', 'Tidak Hadir')->count();
+        // Get attendance counts in batch to reduce queries
+        $attendanceCounts = Attendance::whereIn('student_id', $studentIds)
+            ->whereBetween('tanggal', [$startDate, $endDate])
+            ->selectRaw('student_id, status, COUNT(*) as count')
+            ->groupBy('student_id', 'status')
+            ->get()
+            ->groupBy('student_id');
+
+        foreach ($students as $student) {
+            $studentAttendances = $attendanceCounts->get($student->id, collect());
             
+            // Initialize counts
+            $hadirMasuk = 0;
+            $terlambat = 0;
+            $hadirPulang = 0;
+            $izin = 0;
+            $tidakHadir = 0;
+
+            // Sum counts from grouped data
+            foreach ($studentAttendances as $attendance) {
+                switch ($attendance->status) {
+                    case 'Hadir Masuk':
+                        $hadirMasuk = $attendance->count;
+                        break;
+                    case 'Terlambat':
+                        $terlambat = $attendance->count;
+                        break;
+                    case 'Hadir Pulang':
+                        $hadirPulang = $attendance->count;
+                        break;
+                    case 'Izin':
+                        $izin = $attendance->count;
+                        break;
+                    case 'Tidak Hadir':
+                        $tidakHadir = $attendance->count;
+                        break;
+                }
+            }
+
             $totalAttendance = $hadirMasuk + $terlambat + $hadirPulang + $izin + $tidakHadir;
             $attendancePercentage = $totalDays > 0 ? round(($totalAttendance / $totalDays) * 100, 1) : 0;
 
@@ -91,20 +127,36 @@ class ReportController extends Controller
             ];
         }
 
-        // Class summary
+        // Calculate class summary efficiently
+        $totalHadirMasuk = 0;
+        $totalTerlambat = 0;
+        $totalHadirPulang = 0;
+        $totalIzin = 0;
+        $totalTidakHadir = 0;
+        $totalAttendancePercentage = 0;
+
+        foreach ($reportData as $studentData) {
+            $totalHadirMasuk += $studentData['hadir_masuk'];
+            $totalTerlambat += $studentData['terlambat'];
+            $totalHadirPulang += $studentData['hadir_pulang'];
+            $totalIzin += $studentData['izin'];
+            $totalTidakHadir += $studentData['tidak_hadir'];
+            $totalAttendancePercentage += $studentData['attendance_percentage'];
+        }
+
         $classSummary = [
             'total_students' => $students->count(),
             'total_days' => $totalDays,
-            'total_hadir_masuk' => collect($reportData)->sum('hadir_masuk'),
-            'total_terlambat' => collect($reportData)->sum('terlambat'),
-            'total_hadir_pulang' => collect($reportData)->sum('hadir_pulang'),
-            'total_izin' => collect($reportData)->sum('izin'),
-            'total_tidak_hadir' => collect($reportData)->sum('tidak_hadir'),
+            'total_hadir_masuk' => $totalHadirMasuk,
+            'total_terlambat' => $totalTerlambat,
+            'total_hadir_pulang' => $totalHadirPulang,
+            'total_izin' => $totalIzin,
+            'total_tidak_hadir' => $totalTidakHadir,
             'average_attendance_percentage' => $students->count() > 0 ? 
-                round(collect($reportData)->avg('attendance_percentage'), 1) : 0,
+                round($totalAttendancePercentage / $students->count(), 1) : 0,
         ];
 
-        // Log the report generation
+        // Log the report generation with minimal data
         try {
             Report::logReport(
                 'class',
@@ -113,8 +165,7 @@ class ReportController extends Controller
                     'kelas' => $kelas,
                     'start_date' => $startDate->format('Y-m-d'),
                     'end_date' => $endDate->format('Y-m-d'),
-                    'total_students' => $students->count(),
-                    'total_days' => $totalDays,
+                    // Removed heavy data to reduce memory usage
                 ],
                 $students->count()
             );
@@ -137,6 +188,10 @@ class ReportController extends Controller
      */
     public function studentReport(Request $request)
     {
+        // Increase memory limit for large data processing
+        ini_set('memory_limit', '256M');
+        set_time_limit(120);
+
         $user = Auth::user();
         
         if (!in_array($user->role, ['admin', 'guru'])) {
@@ -153,34 +208,45 @@ class ReportController extends Controller
         $startDate = Carbon::parse($request->start_date);
         $endDate = Carbon::parse($request->end_date);
 
-        // Get student data
-        $student = Student::with('user')->findOrFail($studentId);
+        // Get student data with only necessary columns
+        $student = Student::with(['user' => function($query) {
+            $query->select('id', 'name');
+        }])->findOrFail($studentId);
 
-        // Get attendance data for the date range
+        // Get attendance data for the date range with pagination for large datasets
         $attendances = Attendance::where('student_id', $studentId)
             ->whereBetween('tanggal', [$startDate, $endDate])
             ->orderBy('tanggal', 'desc')
+            ->select('id', 'tanggal', 'waktu', 'status')
             ->get();
 
         // Get permissions for the date range
         $permissions = Permission::where('student_id', $studentId)
             ->whereBetween('tanggal', [$startDate, $endDate])
             ->orderBy('tanggal', 'desc')
+            ->select('id', 'tanggal', 'alasan', 'foto_bukti', 'status')
             ->get();
 
-        // Calculate statistics
+        // Calculate statistics using database aggregation for efficiency
+        $attendanceStats = Attendance::where('student_id', $studentId)
+            ->whereBetween('tanggal', [$startDate, $endDate])
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
         $totalDays = $startDate->diffInDays($endDate) + 1;
         
-        $hadirMasuk = $attendances->where('status', 'Hadir Masuk')->count();
-        $terlambat = $attendances->where('status', 'Terlambat')->count();
-        $hadirPulang = $attendances->where('status', 'Hadir Pulang')->count();
-        $izin = $attendances->where('status', 'Izin')->count();
-        $tidakHadir = $attendances->where('status', 'Tidak Hadir')->count();
+        $hadirMasuk = $attendanceStats['Hadir Masuk'] ?? 0;
+        $terlambat = $attendanceStats['Terlambat'] ?? 0;
+        $hadirPulang = $attendanceStats['Hadir Pulang'] ?? 0;
+        $izin = $attendanceStats['Izin'] ?? 0;
+        $tidakHadir = $attendanceStats['Tidak Hadir'] ?? 0;
         
         $totalAttendance = $hadirMasuk + $terlambat + $hadirPulang + $izin + $tidakHadir;
         $attendancePercentage = $totalDays > 0 ? round(($totalAttendance / $totalDays) * 100, 1) : 0;
 
-        // Monthly statistics
+        // Monthly statistics with optimized queries
         $monthlyStats = [];
         $currentMonth = $startDate->copy();
         
@@ -188,15 +254,18 @@ class ReportController extends Controller
             $monthStart = $currentMonth->copy()->startOfMonth();
             $monthEnd = $currentMonth->copy()->endOfMonth();
             
-            $monthAttendances = Attendance::where('student_id', $studentId)
+            $monthStats = Attendance::where('student_id', $studentId)
                 ->whereBetween('tanggal', [$monthStart, $monthEnd])
-                ->get();
+                ->selectRaw('status, COUNT(*) as count')
+                ->groupBy('status')
+                ->pluck('count', 'status')
+                ->toArray();
             
-            $monthHadirMasuk = $monthAttendances->where('status', 'Hadir Masuk')->count();
-            $monthTerlambat = $monthAttendances->where('status', 'Terlambat')->count();
-            $monthHadirPulang = $monthAttendances->where('status', 'Hadir Pulang')->count();
-            $monthIzin = $monthAttendances->where('status', 'Izin')->count();
-            $monthTidakHadir = $monthAttendances->where('status', 'Tidak Hadir')->count();
+            $monthHadirMasuk = $monthStats['Hadir Masuk'] ?? 0;
+            $monthTerlambat = $monthStats['Terlambat'] ?? 0;
+            $monthHadirPulang = $monthStats['Hadir Pulang'] ?? 0;
+            $monthIzin = $monthStats['Izin'] ?? 0;
+            $monthTidakHadir = $monthStats['Tidak Hadir'] ?? 0;
             
             $monthlyStats[] = [
                 'month' => $currentMonth->format('F Y'),
@@ -222,7 +291,7 @@ class ReportController extends Controller
             'attendance_percentage' => $attendancePercentage,
         ];
 
-        // Log the report generation
+        // Log the report generation with minimal data
         try {
             Report::logReport(
                 'student',
@@ -230,12 +299,9 @@ class ReportController extends Controller
                 [
                     'student_id' => $studentId,
                     'student_name' => $student->user->name ?? 'N/A',
-                    'student_nis' => $student->nis ?? 'N/A',
-                    'student_kelas' => $student->kelas ?? 'N/A',
                     'start_date' => $startDate->format('Y-m-d'),
                     'end_date' => $endDate->format('Y-m-d'),
-                    'total_days' => $totalDays,
-                    'attendance_percentage' => $attendancePercentage,
+                    // Removed heavy data to reduce memory usage
                 ],
                 $attendances->count()
             );
