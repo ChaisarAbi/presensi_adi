@@ -218,7 +218,7 @@
     </div>
     
     <div class="col-md-6 mb-4">
-        <div class="card">
+        <div class="card attendance-statistics-card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div>
                     <i class="bi bi-bar-chart"></i> Statistik Kehadiran Hari Ini
@@ -228,7 +228,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="chart-container" style="position: relative; height: 250px;">
+                <div class="chart-container" style="position: relative; height: 220px;">
                     <canvas id="attendanceChart"></canvas>
                 </div>
                 <div class="mt-3">
@@ -313,9 +313,20 @@
 
 @push('styles')
 <style>
-    /* Mini stat cards */
+    /* Fix padding overflow for attendance statistics card */
+    .attendance-statistics-card {
+        overflow: hidden;
+    }
+    
+    .attendance-statistics-card .card-body {
+        padding: 1rem;
+    }
+    
+    /* Mini stat cards - fix padding overflow */
     .stat-mini-card {
         transition: transform 0.2s;
+        padding: 0.5rem !important;
+        margin: 0.125rem;
     }
     
     .stat-mini-card:hover {
@@ -323,20 +334,90 @@
     }
     
     .stat-mini-number {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         font-weight: bold;
         line-height: 1.2;
+        margin-bottom: 0.125rem;
     }
     
     .stat-mini-label {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         opacity: 0.9;
+        line-height: 1.1;
     }
     
     /* Chart container */
     .chart-container {
         position: relative;
-        height: 250px;
+        height: 220px;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Mobile optimization for attendance statistics */
+    @media (max-width: 768px) {
+        .attendance-statistics-card {
+            margin-left: -0.5rem;
+            margin-right: -0.5rem;
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+        }
+        
+        .attendance-statistics-card .card-header {
+            border-radius: 0 !important;
+            padding: 0.75rem 1rem;
+        }
+        
+        .attendance-statistics-card .card-body {
+            padding: 0.75rem;
+        }
+        
+        .chart-container {
+            height: 180px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-mini-card {
+            padding: 0.375rem !important;
+            margin: 0.125rem;
+        }
+        
+        .stat-mini-number {
+            font-size: 1rem;
+        }
+        
+        .stat-mini-label {
+            font-size: 0.65rem;
+        }
+        
+        .row.text-center {
+            margin-left: -0.25rem;
+            margin-right: -0.25rem;
+        }
+        
+        .row.text-center > [class*="col-"] {
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+        }
+    }
+    
+    /* Extra small devices */
+    @media (max-width: 575.98px) {
+        .chart-container {
+            height: 160px;
+        }
+        
+        .stat-mini-card {
+            padding: 0.25rem !important;
+        }
+        
+        .stat-mini-number {
+            font-size: 0.9rem;
+        }
+        
+        .stat-mini-label {
+            font-size: 0.6rem;
+        }
     }
 </style>
 @endpush
