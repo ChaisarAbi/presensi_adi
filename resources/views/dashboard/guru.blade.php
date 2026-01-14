@@ -205,4 +205,3 @@
 </script>
 @endpush
 @endsection                                
-    });
