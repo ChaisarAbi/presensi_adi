@@ -121,6 +121,7 @@ class UserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => $userType === 'siswa' ? 'siswa' : $request->role,
+            'is_active' => true,
         ]);
 
         // If student, create student record
@@ -156,16 +157,29 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
         
-        $validator = Validator::make($request->all(), [
+        // Prepare validation rules
+        $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $id,
             'password' => 'nullable|string|min:8|confirmed',
             'role' => 'required|in:admin,guru,siswa',
-            'nis' => 'sometimes|required_if:role,siswa|string|unique:students,nis,' . ($user->student ? $user->student->id : 'NULL') . ',id',
-            'kelas' => 'sometimes|required_if:role,siswa|string',
-            'nama_ortu' => 'sometimes|required_if:role,siswa|string',
-            'kontak_ortu' => 'sometimes|required_if:role,siswa|string',
-        ], [
+        ];
+        
+        // Only add student validation rules if role is siswa
+        if ($request->role === 'siswa') {
+            $rules['nis'] = 'required|string|unique:students,nis,' . ($user->student ? $user->student->id : 'NULL') . ',id';
+            $rules['kelas'] = 'required|string';
+            $rules['nama_ortu'] = 'required|string';
+            $rules['kontak_ortu'] = 'required|string';
+        } else {
+            // For non-siswa roles, make student fields nullable
+            $rules['nis'] = 'nullable|string';
+            $rules['kelas'] = 'nullable|string';
+            $rules['nama_ortu'] = 'nullable|string';
+            $rules['kontak_ortu'] = 'nullable|string';
+        }
+        
+        $validator = Validator::make($request->all(), $rules, [
             'name.required' => 'Nama lengkap wajib diisi.',
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
@@ -174,11 +188,11 @@ class UserController extends Controller
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
             'role.required' => 'Role wajib dipilih.',
             'role.in' => 'Role tidak valid.',
-            'nis.required_if' => 'NIS wajib diisi untuk siswa.',
+            'nis.required' => 'NIS wajib diisi untuk siswa.',
             'nis.unique' => 'NIS sudah terdaftar.',
-            'kelas.required_if' => 'Kelas wajib diisi untuk siswa.',
-            'nama_ortu.required_if' => 'Nama orang tua wajib diisi untuk siswa.',
-            'kontak_ortu.required_if' => 'Kontak orang tua wajib diisi untuk siswa.',
+            'kelas.required' => 'Kelas wajib diisi untuk siswa.',
+            'nama_ortu.required' => 'Nama orang tua wajib diisi untuk siswa.',
+            'kontak_ortu.required' => 'Kontak orang tua wajib diisi untuk siswa.',
         ]);
 
         if ($validator->fails()) {

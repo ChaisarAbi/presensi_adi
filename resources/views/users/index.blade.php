@@ -2,6 +2,140 @@
 
 @section('title', 'Kelola User')
 
+@push('styles')
+<style>
+    /* Mobile optimization for user table */
+    .user-card {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        transition: all 0.2s;
+    }
+    
+    .user-card:hover {
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #0d6efd;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    
+    .user-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+    
+    /* Fix table overflow */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -0.5rem;
+        padding: 0 0.5rem;
+    }
+    
+    .table-responsive table {
+        min-width: 800px;
+        margin-bottom: 0;
+    }
+    
+    /* Mobile view */
+    @media (max-width: 768px) {
+        .table-responsive {
+            display: none;
+        }
+        
+        .mobile-users {
+            display: block;
+        }
+        
+        .user-card {
+            padding: 0.75rem;
+            margin-left: -0.5rem;
+            margin-right: -0.5rem;
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+        }
+        
+        .user-info {
+            font-size: 0.9rem;
+        }
+        
+        /* Fix card body padding on mobile */
+        .card-body {
+            padding: 0.75rem;
+        }
+        
+        /* Fix filter form on mobile */
+        .filter-form .row {
+            margin-left: -0.25rem;
+            margin-right: -0.25rem;
+        }
+        
+        .filter-form .col-md-4,
+        .filter-form .col-md-6,
+        .filter-form .col-md-2 {
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+        }
+        
+        /* Fix stats cards on mobile */
+        .stat-card {
+            padding: 0.75rem;
+        }
+        
+        .stat-number {
+            font-size: 1.5rem;
+        }
+    }
+    
+    /* Desktop view */
+    @media (min-width: 769px) {
+        .mobile-users {
+            display: none;
+        }
+        
+        .table-responsive {
+            display: block;
+        }
+        
+        /* Fix table width */
+        .table-responsive table {
+            width: 100%;
+            min-width: auto;
+        }
+    }
+    
+    /* Filter form styling */
+    .filter-form .form-control,
+    .filter-form .form-select {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Fix pagination overflow */
+    .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .page-item {
+        margin-bottom: 0.25rem;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="row mb-4">
     <div class="col-12">
@@ -49,7 +183,7 @@
                 <i class="bi bi-funnel"></i> Filter & Pencarian
             </div>
             <div class="card-body">
-                <form method="GET" action="{{ route('users.index') }}">
+                <form method="GET" action="{{ route('users.index') }}" class="filter-form">
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label for="role" class="form-label">Role</label>
@@ -81,17 +215,18 @@
     </div>
 </div>
 
-<!-- Users Table -->
-<div class="row">
+<!-- Desktop Table View -->
+<div class="row d-none d-md-block">
     <div class="col-12">
         <div class="card">
-            <div class="card-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0"><i class="bi bi-people"></i> Daftar User</h4>
-                    <a href="{{ route('users.create') }}" class="btn btn-primary btn-sm">
-                        <i class="bi bi-plus-circle"></i> Tambah User
-                    </a>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-people"></i> Daftar User
+                    <span class="badge bg-primary ms-2">{{ $users->total() }}</span>
                 </div>
+                <a href="{{ route('users.create') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-circle"></i> Tambah User
+                </a>
             </div>
             <div class="card-body">
                 @if($users->count() > 0)
@@ -114,11 +249,8 @@
                                     <td>{{ $loop->iteration + (($users->currentPage() - 1) * $users->perPage()) }}</td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="avatar me-2">
-                                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
-                                                     style="width: 36px; height: 36px;">
-                                                    {{ strtoupper(substr($user->name, 0, 1)) }}
-                                                </div>
+                                            <div class="user-avatar me-2">
+                                                {{ strtoupper(substr($user->name, 0, 1)) }}
                                             </div>
                                             <div>
                                                 <strong>{{ $user->name }}</strong>
@@ -153,7 +285,7 @@
                                     <td>{{ $user->created_at->format('d/m/Y') }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <a href="{{ route('users.edit', $user->id) }}" class="btn btn-outline-primary">
+                                            <a href="{{ route('users.edit', $user->id) }}" class="btn btn-outline-primary" title="Edit">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
                                             
@@ -162,7 +294,7 @@
                                                   class="d-inline" onsubmit="return confirmDelete()">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="btn btn-outline-danger">
+                                                <button type="submit" class="btn btn-outline-danger" title="Hapus">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>
@@ -170,7 +302,8 @@
                                             <form method="POST" action="{{ route('users.toggleStatus', $user->id) }}" 
                                                   class="d-inline">
                                                 @csrf
-                                                <button type="submit" class="btn btn-outline-{{ $user->is_active ? 'warning' : 'success' }}">
+                                                <button type="submit" class="btn btn-outline-{{ $user->is_active ? 'warning' : 'success' }}" 
+                                                        title="{{ $user->is_active ? 'Nonaktifkan' : 'Aktifkan' }}">
                                                     <i class="bi bi-power"></i>
                                                 </button>
                                             </form>
@@ -183,7 +316,112 @@
                         </table>
                     </div>
                     
-                    <div class="d-flex justify-content-center">
+                    <div class="d-flex justify-content-center mt-3">
+                        {{ $users->links() }}
+                    </div>
+                @else
+                    <div class="text-center py-4">
+                        <i class="bi bi-people display-4 text-muted"></i>
+                        <p class="mt-3">Tidak ada user ditemukan.</p>
+                        <a href="{{ route('users.create') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Tambah User Pertama
+                        </a>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile Card View -->
+<div class="row d-md-none mobile-users">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-people"></i> Daftar User
+                    <span class="badge bg-primary ms-2">{{ $users->total() }}</span>
+                </div>
+                <a href="{{ route('users.create') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-circle"></i> Tambah
+                </a>
+            </div>
+            <div class="card-body">
+                @if($users->count() > 0)
+                    @foreach($users as $user)
+                    <div class="user-card">
+                        <div class="user-info">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar me-2">
+                                        {{ strtoupper(substr($user->name, 0, 1)) }}
+                                    </div>
+                                    <div>
+                                        <strong>{{ $user->name }}</strong>
+                                        <div class="text-muted small">{{ $user->email }}</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    @if($user->role === 'admin')
+                                        <span class="badge bg-success">Admin</span>
+                                    @elseif($user->role === 'guru')
+                                        <span class="badge bg-warning">Guru</span>
+                                    @else
+                                        <span class="badge bg-info">Siswa</span>
+                                    @endif
+                                    
+                                    @if(!$user->is_active)
+                                        <span class="badge bg-danger ms-1">Nonaktif</span>
+                                    @endif
+                                </div>
+                            </div>
+                            
+                            <div class="mb-2">
+                                @if($user->student)
+                                    <div>
+                                        <strong>NIS:</strong> {{ $user->student->nis }}
+                                    </div>
+                                    <div>
+                                        <strong>Kelas:</strong> {{ $user->student->kelas }}
+                                    </div>
+                                @else
+                                    <div class="text-muted">-</div>
+                                @endif
+                            </div>
+                            
+                            <div class="mb-2">
+                                <strong>Daftar:</strong> {{ $user->created_at->format('d/m/Y') }}
+                            </div>
+                            
+                            <div class="user-actions">
+                                <a href="{{ route('users.edit', $user->id) }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                                
+                                @if($user->id !== Auth::id())
+                                <form method="POST" action="{{ route('users.destroy', $user->id) }}" 
+                                      class="d-inline" onsubmit="return confirmDelete()">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-trash"></i> Hapus
+                                    </button>
+                                </form>
+                                
+                                <form method="POST" action="{{ route('users.toggleStatus', $user->id) }}" 
+                                      class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline-{{ $user->is_active ? 'warning' : 'success' }} btn-sm">
+                                        <i class="bi bi-power"></i> {{ $user->is_active ? 'Nonaktif' : 'Aktif' }}
+                                    </button>
+                                </form>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                    
+                    <div class="d-flex justify-content-center mt-3">
                         {{ $users->links() }}
                     </div>
                 @else
@@ -210,6 +448,11 @@
     document.getElementById('role').addEventListener('change', function() {
         this.form.submit();
     });
+    
+    // Auto-refresh page every 2 minutes
+    setTimeout(function() {
+        location.reload();
+    }, 120000);
 </script>
 @endpush
 @endsection

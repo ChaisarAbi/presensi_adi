@@ -2,6 +2,75 @@
 
 @section('title', 'Dashboard Admin')
 
+@push('styles')
+<style>
+    /* Mobile optimization */
+    .stat-card {
+        padding: 1rem;
+        border-radius: 10px;
+        transition: transform 0.2s;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: bold;
+        line-height: 1.2;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-top: 0.5rem;
+    }
+    
+    /* Fix overflow on mobile */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Better padding for mobile */
+    @media (max-width: 768px) {
+        .card {
+            margin-bottom: 1rem;
+        }
+        
+        .card-body {
+            padding: 1rem;
+        }
+        
+        .stat-number {
+            font-size: 1.5rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+    }
+    
+    /* Activity list styling */
+    .activity-item {
+        border-left: 3px solid #0d6efd;
+        padding-left: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .activity-time {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .activity-text {
+        margin-bottom: 0.25rem;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="row mb-4">
     <div class="col-12">
@@ -80,29 +149,38 @@
 <div class="row">
     <div class="col-md-6 mb-4">
         <div class="card">
-            <div class="card-header">
-                <i class="bi bi-clock-history"></i> Aktivitas Terbaru
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-clock-history"></i> Aktivitas Terbaru
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="refreshActivities()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
             </div>
             <div class="card-body">
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item">
-                        <div class="d-flex w-100 justify-content-between">
-                            <small class="text-muted">5 menit lalu</small>
+                <div id="activities-container">
+                    @if(count($recentActivities) > 0)
+                        @foreach($recentActivities as $activity)
+                            <div class="activity-item">
+                                <div class="d-flex align-items-start">
+                                    <div class="me-3">
+                                        <i class="bi {{ $activity['icon'] }} {{ $activity['color'] }}"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="activity-text">{{ $activity['text'] }}</div>
+                                        <div class="activity-time">
+                                            <i class="bi bi-clock"></i> {{ $activity['time'] }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="text-center py-4">
+                            <i class="bi bi-activity display-4 text-muted"></i>
+                            <p class="mt-2 text-muted">Belum ada aktivitas terbaru</p>
                         </div>
-                        <p class="mb-1">Sistem berjalan normal</p>
-                    </div>
-                    <div class="list-group-item">
-                        <div class="d-flex w-100 justify-content-between">
-                            <small class="text-muted">1 jam lalu</small>
-                        </div>
-                        <p class="mb-1">QR Code baru digenerate</p>
-                    </div>
-                    <div class="list-group-item">
-                        <div class="d-flex w-100 justify-content-between">
-                            <small class="text-muted">2 jam lalu</small>
-                        </div>
-                        <p class="mb-1">10 siswa telah absen masuk</p>
-                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -323,6 +401,98 @@
     function refreshStats() {
         location.reload();
     }
+    
+    // Refresh activities
+    function refreshActivities() {
+        const btn = event.target.closest('button');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>';
+        btn.disabled = true;
+        
+        $.ajax({
+            url: '{{ route("dashboard.admin") }}',
+            method: 'GET',
+            data: { refresh: true },
+            success: function(response) {
+                // Update activities
+                updateActivities(response.recentActivities);
+                
+                // Re-enable button
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                }, 500);
+                
+                // Show notification
+                showActivityUpdateNotification();
+            },
+            error: function() {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+                console.log('Failed to refresh activities');
+            }
+        });
+    }
+    
+    function updateActivities(activities) {
+        const container = $('#activities-container');
+        
+        if (activities.length === 0) {
+            container.html(`
+                <div class="text-center py-4">
+                    <i class="bi bi-activity display-4 text-muted"></i>
+                    <p class="mt-2 text-muted">Belum ada aktivitas terbaru</p>
+                </div>
+            `);
+            return;
+        }
+        
+        let html = '';
+        activities.forEach(function(activity) {
+            html += `
+                <div class="activity-item">
+                    <div class="d-flex align-items-start">
+                        <div class="me-3">
+                            <i class="bi ${activity.icon} ${activity.color}"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="activity-text">${activity.text}</div>
+                            <div class="activity-time">
+                                <i class="bi bi-clock"></i> ${activity.time}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.html(html);
+    }
+    
+    function showActivityUpdateNotification() {
+        const notification = $(`
+            <div class="toast align-items-center text-bg-success border-0 position-fixed bottom-0 start-0 m-3" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-check-circle"></i> Aktivitas diperbarui
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        `);
+        
+        $('body').append(notification);
+        const toast = new bootstrap.Toast(notification[0]);
+        toast.show();
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+    
+    // Auto-refresh activities every 60 seconds
+    setInterval(refreshActivities, 60000);
 </script>
 @endpush
 @endsection

@@ -21,6 +21,9 @@ class DashboardController extends Controller
         $todayAttendances = Attendance::whereDate('tanggal', today())->count();
         $pendingPermissions = Permission::where('status', 'Pending')->count();
 
+        // Get recent activities
+        $recentActivities = $this->getRecentActivities();
+
         // If AJAX request for refresh
         if ($request->ajax() || $request->has('refresh')) {
             return response()->json([
@@ -28,7 +31,8 @@ class DashboardController extends Controller
                 'totalTeachers' => $totalTeachers,
                 'todayAttendances' => $todayAttendances,
                 'pendingPermissions' => $pendingPermissions,
-                'timestamp' => now()->format('H:i:s')
+                'timestamp' => now()->format('H:i:s'),
+                'recentActivities' => $this->getRecentActivities()
             ]);
         }
 
@@ -36,8 +40,85 @@ class DashboardController extends Controller
             'totalStudents',
             'totalTeachers',
             'todayAttendances',
-            'pendingPermissions'
+            'pendingPermissions',
+            'recentActivities'
         ));
+    }
+
+    /**
+     * Get recent activities for dashboard
+     */
+    private function getRecentActivities()
+    {
+        $activities = [];
+        
+        // Get recent attendances (last 2 hours)
+        $recentAttendances = Attendance::with(['student', 'student.user'])
+            ->where('created_at', '>=', now()->subHours(2))
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        foreach ($recentAttendances as $attendance) {
+            $studentName = $attendance->student->user->name ?? 'Siswa';
+            $timeAgo = $attendance->created_at->diffForHumans();
+            
+            $activities[] = [
+                'type' => 'attendance',
+                'icon' => 'bi-person-check',
+                'color' => 'text-success',
+                'time' => $timeAgo,
+                'text' => "{$studentName} absen {$attendance->status}",
+                'timestamp' => $attendance->created_at
+            ];
+        }
+        
+        // Get recent permissions (last 2 hours)
+        $recentPermissions = Permission::with(['student', 'student.user'])
+            ->where('created_at', '>=', now()->subHours(2))
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        foreach ($recentPermissions as $permission) {
+            $studentName = $permission->student->user->name ?? 'Siswa';
+            $timeAgo = $permission->created_at->diffForHumans();
+            
+            $activities[] = [
+                'type' => 'permission',
+                'icon' => 'bi-clipboard-check',
+                'color' => 'text-warning',
+                'time' => $timeAgo,
+                'text' => "{$studentName} mengajukan izin",
+                'timestamp' => $permission->created_at
+            ];
+        }
+        
+        // Get recent QR generations (last 2 hours)
+        $recentQRCodes = \App\Models\QrCode::where('created_at', '>=', now()->subHours(2))
+            ->orderBy('created_at', 'desc')
+            ->limit(3)
+            ->get();
+        
+        foreach ($recentQRCodes as $qr) {
+            $timeAgo = $qr->created_at->diffForHumans();
+            
+            $activities[] = [
+                'type' => 'qr',
+                'icon' => 'bi-qr-code',
+                'color' => 'text-primary',
+                'time' => $timeAgo,
+                'text' => "QR Code baru digenerate",
+                'timestamp' => $qr->created_at
+            ];
+        }
+        
+        // Sort by timestamp (newest first) and limit to 10
+        usort($activities, function($a, $b) {
+            return $b['timestamp'] <=> $a['timestamp'];
+        });
+        
+        return array_slice($activities, 0, 10);
     }
 
     /**

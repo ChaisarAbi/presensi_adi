@@ -10,7 +10,7 @@
     </div>
 </div>
 
-<!-- Filter Section -->
+<!-- Filter Form -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
@@ -18,40 +18,28 @@
                 <i class="bi bi-funnel"></i> Filter Data
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label for="filter-kelas" class="form-label">Kelas</label>
-                        <select class="form-select" id="filter-kelas">
-                            <option value="">Semua Kelas</option>
-                            <option value="X IPA 1">X IPA 1</option>
-                            <option value="X IPA 2">X IPA 2</option>
-                            <option value="X IPA 3">X IPA 3</option>
-                            <option value="XI IPA 1">XI IPA 1</option>
-                            <option value="XI IPA 2">XI IPA 2</option>
-                            <option value="XII IPA 1">XII IPA 1</option>
-                            <option value="XII IPA 2">XII IPA 2</option>
-                        </select>
+                <form method="GET" action="{{ route('monitoring.index') }}" id="filter-form">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="kelas" class="form-label">Kelas</label>
+                            <select class="form-select" name="kelas" id="kelas">
+                                <option value="all" {{ $kelas == 'all' ? 'selected' : '' }}>Semua Kelas</option>
+                                @foreach($kelasList as $k)
+                                    <option value="{{ $k }}" {{ $kelas == $k ? 'selected' : '' }}>{{ $k }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="tanggal" class="form-label">Tanggal</label>
+                            <input type="date" class="form-control" name="tanggal" id="tanggal" value="{{ $tanggal }}">
+                        </div>
+                        <div class="col-md-4 mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-filter"></i> Terapkan Filter
+                            </button>
+                        </div>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="filter-tanggal" class="form-label">Tanggal</label>
-                        <input type="date" class="form-control" id="filter-tanggal" value="{{ date('Y-m-d') }}">
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="filter-status" class="form-label">Status</label>
-                        <select class="form-select" id="filter-status">
-                            <option value="">Semua Status</option>
-                            <option value="Hadir Masuk">Hadir Masuk</option>
-                            <option value="Hadir Pulang">Hadir Pulang</option>
-                            <option value="Izin">Izin</option>
-                            <option value="Tidak Hadir">Tidak Hadir</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="d-flex justify-content-end">
-                    <button class="btn btn-primary" onclick="applyFilters()">
-                        <i class="bi bi-filter"></i> Terapkan Filter
-                    </button>
-                </div>
+                </form>
             </div>
         </div>
     </div>
@@ -61,43 +49,64 @@
 <div class="row mb-4">
     <div class="col-md-3 col-6 mb-3">
         <div class="card stat-card">
-            <div class="stat-number text-primary" id="stat-hadir">0</div>
+            <div class="stat-number text-primary">{{ $hadirMasuk + $hadirPulang }}</div>
             <div class="stat-label">Hadir</div>
         </div>
     </div>
     
     <div class="col-md-3 col-6 mb-3">
         <div class="card stat-card">
-            <div class="stat-number text-warning" id="stat-izin">0</div>
+            <div class="stat-number text-warning">{{ $izin }}</div>
             <div class="stat-label">Izin</div>
         </div>
     </div>
     
     <div class="col-md-3 col-6 mb-3">
         <div class="card stat-card">
-            <div class="stat-number text-danger" id="stat-tidak-hadir">0</div>
+            <div class="stat-number text-danger">{{ $tidakHadir }}</div>
             <div class="stat-label">Tidak Hadir</div>
         </div>
     </div>
     
     <div class="col-md-3 col-6 mb-3">
         <div class="card stat-card">
-            <div class="stat-number text-info" id="stat-total">0</div>
+            <div class="stat-number text-info">{{ $totalStudents }}</div>
             <div class="stat-label">Total Siswa</div>
         </div>
     </div>
 </div>
 
-<!-- Charts -->
+<!-- Simple Statistics -->
 <div class="row mb-4">
     <div class="col-md-6 mb-4">
         <div class="card">
             <div class="card-header">
-                <i class="bi bi-bar-chart"></i> Statistik Kehadiran
+                <i class="bi bi-bar-chart"></i> Statistik Kehadiran Hari Ini
             </div>
             <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="attendanceChart"></canvas>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Hadir Masuk</strong></td>
+                            <td class="text-end">{{ $hadirMasuk }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Hadir Pulang</strong></td>
+                            <td class="text-end">{{ $hadirPulang }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Izin</strong></td>
+                            <td class="text-end">{{ $izin }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tidak Hadir</strong></td>
+                            <td class="text-end">{{ $tidakHadir }}</td>
+                        </tr>
+                        <tr class="table-light">
+                            <td><strong>Total Kehadiran</strong></td>
+                            <td class="text-end"><strong>{{ $hadirMasuk + $hadirPulang + $izin + $tidakHadir }}</strong></td>
+                        </tr>
+                    </table>
                 </div>
             </div>
         </div>
@@ -106,12 +115,19 @@
     <div class="col-md-6 mb-4">
         <div class="card">
             <div class="card-header">
-                <i class="bi bi-calendar-week"></i> Kehadiran 7 Hari Terakhir
+                <i class="bi bi-info-circle"></i> Informasi Filter
             </div>
             <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="weeklyChart"></canvas>
-                </div>
+                <p><strong>Tanggal:</strong> {{ \Carbon\Carbon::parse($tanggal)->format('d F Y') }}</p>
+                <p><strong>Kelas:</strong> {{ $kelas == 'all' ? 'Semua Kelas' : $kelas }}</p>
+                <p><strong>Total Siswa:</strong> {{ $totalStudents }} siswa</p>
+                <p><strong>Persentase Kehadiran:</strong> 
+                    @if($totalStudents > 0)
+                        {{ round((($hadirMasuk + $hadirPulang) / $totalStudents) * 100, 1) }}%
+                    @else
+                        0%
+                    @endif
+                </p>
             </div>
         </div>
     </div>
@@ -122,27 +138,73 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <i class="bi bi-table"></i> Data Absensi
+                <i class="bi bi-table"></i> Data Absensi Siswa
             </div>
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover data-table" id="attendance-table">
-                        <thead>
-                            <tr>
-                                <th>Nama</th>
-                                <th>NIS</th>
-                                <th>Kelas</th>
-                                <th>Tanggal</th>
-                                <th>Waktu</th>
-                                <th>Status</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Data will be loaded via AJAX -->
-                        </tbody>
-                    </table>
-                </div>
+                @if($students->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Nama Siswa</th>
+                                    <th>NIS</th>
+                                    <th>Kelas</th>
+                                    <th>Status Absensi</th>
+                                    <th>Waktu</th>
+                                    <th>Detail</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($students as $index => $student)
+                                    @php
+                                        $attendance = $student->attendances->first();
+                                        $status = $attendance ? $attendance->status : 'Belum Absen';
+                                        
+                                        $statusClass = 'secondary';
+                                        if ($status == 'Hadir Masuk' || $status == 'Hadir Pulang') $statusClass = 'success';
+                                        if ($status == 'Izin') $statusClass = 'warning';
+                                        if ($status == 'Tidak Hadir') $statusClass = 'danger';
+                                        if ($status == 'Belum Absen') $statusClass = 'secondary';
+                                    @endphp
+                                    <tr>
+                                        <td>{{ $index + 1 }}</td>
+                                        <td>{{ $student->user->name ?? 'N/A' }}</td>
+                                        <td>{{ $student->nis ?? 'N/A' }}</td>
+                                        <td>{{ $student->kelas ?? 'N/A' }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ $statusClass }}">
+                                                {{ $status }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if($attendance)
+                                                {{ $attendance->waktu }}
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($attendance)
+                                                <button class="btn btn-sm btn-outline-primary" onclick="viewAttendanceDetail({{ $attendance->id }})">
+                                                    <i class="bi bi-eye"></i> Detail
+                                                </button>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-5">
+                        <i class="bi bi-people display-4 text-muted"></i>
+                        <h5 class="mt-3">Tidak ada data siswa</h5>
+                        <p class="text-muted">Belum ada siswa yang terdaftar di sistem.</p>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -150,189 +212,14 @@
 
 @push('scripts')
 <script>
-    let attendanceChart = null;
-    let weeklyChart = null;
-    let lastUpdate = '{{ now()->toDateTimeString() }}';
-    
-    // Initialize on page load
-    $(document).ready(function() {
-        loadData();
-        setInterval(loadData, 30000); // Refresh every 30 seconds
-        setInterval(checkRealtimeUpdates, 10000); // Check updates every 10 seconds
-    });
-    
-    function loadData() {
-        const kelas = $('#filter-kelas').val();
-        const tanggal = $('#filter-tanggal').val();
-        const status = $('#filter-status').val();
-        
-        $.ajax({
-            url: '{{ route("monitoring.chartData") }}',
-            method: 'GET',
-            data: { kelas, tanggal, status },
-            success: function(response) {
-                updateStats(response.stats);
-                updateCharts(response.chartData);
-                updateTable(response.attendances);
-            }
-        });
+    function viewAttendanceDetail(id) {
+        alert('Detail absensi ID: ' + id + '\nFitur detail akan dikembangkan lebih lanjut.');
     }
     
-    function applyFilters() {
-        loadData();
-    }
-    
-    function updateStats(stats) {
-        $('#stat-hadir').text(stats.hadir);
-        $('#stat-izin').text(stats.izin);
-        $('#stat-tidak-hadir').text(stats.tidak_hadir);
-        $('#stat-total').text(stats.total);
-    }
-    
-    function updateCharts(chartData) {
-        // Update attendance chart
-        if (attendanceChart) {
-            attendanceChart.destroy();
-        }
-        
-        const ctx1 = document.getElementById('attendanceChart').getContext('2d');
-        attendanceChart = new Chart(ctx1, {
-            type: 'doughnut',
-            data: {
-                labels: ['Hadir', 'Izin', 'Tidak Hadir'],
-                datasets: [{
-                    data: [chartData.hadir, chartData.izin, chartData.tidak_hadir],
-                    backgroundColor: ['#198754', '#ffc107', '#dc3545'],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                }
-            }
-        });
-        
-        // Update weekly chart
-        if (weeklyChart) {
-            weeklyChart.destroy();
-        }
-        
-        const ctx2 = document.getElementById('weeklyChart').getContext('2d');
-        weeklyChart = new Chart(ctx2, {
-            type: 'line',
-            data: {
-                labels: chartData.weekly_labels,
-                datasets: [{
-                    label: 'Hadir',
-                    data: chartData.weekly_hadir,
-                    borderColor: '#198754',
-                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
-                    fill: true
-                }, {
-                    label: 'Izin',
-                    data: chartData.weekly_izin,
-                    borderColor: '#ffc107',
-                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true }
-                }
-            }
-        });
-    }
-    
-    function updateTable(attendances) {
-        const tbody = $('#attendance-table tbody');
-        tbody.empty();
-        
-        if (attendances.length === 0) {
-            tbody.append(`
-                <tr>
-                    <td colspan="7" class="text-center py-4">
-                        <i class="bi bi-calendar-x display-4 text-muted"></i>
-                        <p class="mt-2">Tidak ada data absensi</p>
-                    </td>
-                </tr>
-            `);
-            return;
-        }
-        
-        attendances.forEach(function(attendance) {
-            let statusClass = 'status-hadir';
-            if (attendance.status === 'Izin') statusClass = 'status-izin';
-            if (attendance.status === 'Tidak Hadir') statusClass = 'status-tidak-hadir';
-            
-            tbody.append(`
-                <tr>
-                    <td>${attendance.student_name}</td>
-                    <td>${attendance.nis}</td>
-                    <td>${attendance.kelas}</td>
-                    <td>${attendance.tanggal}</td>
-                    <td>${attendance.waktu}</td>
-                    <td><span class="attendance-status ${statusClass}">${attendance.status}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="viewDetail(${attendance.id})">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                    </td>
-                </tr>
-            `);
-        });
-    }
-    
-    function viewDetail(id) {
-        alert('Detail absensi ID: ' + id);
-        // Implement detail view as needed
-    }
-    
-    function checkRealtimeUpdates() {
-        $.ajax({
-            url: '{{ route("monitoring.realtimeUpdates") }}',
-            method: 'GET',
-            data: { last_update: lastUpdate },
-            success: function(response) {
-                lastUpdate = response.last_update;
-                
-                if (response.attendances.length > 0 || response.permissions.length > 0) {
-                    // Show notification
-                    showNotification('Ada pembaruan data absensi');
-                    // Reload data
-                    loadData();
-                }
-            }
-        });
-    }
-    
-    function showNotification(message) {
-        // Create notification element
-        const notification = $(`
-            <div class="toast align-items-center text-bg-primary border-0 position-fixed bottom-0 end-0 m-3" role="alert">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="bi bi-bell-fill"></i> ${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            </div>
-        `);
-        
-        $('body').append(notification);
-        const toast = new bootstrap.Toast(notification[0]);
-        toast.show();
-        
-        // Remove after 5 seconds
-        setTimeout(() => {
-            notification.remove();
-        }, 5000);
-    }
+    // Auto-refresh page every 60 seconds
+    setTimeout(function() {
+        location.reload();
+    }, 60000);
 </script>
 @endpush
 @endsection

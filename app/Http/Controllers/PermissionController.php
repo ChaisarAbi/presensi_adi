@@ -129,13 +129,20 @@ class PermissionController extends Controller
         $approvedCount = Permission::where('status', 'Disetujui')->count();
         $rejectedCount = Permission::where('status', 'Ditolak')->count();
         $totalCount = Permission::count();
+        
+        // Get unique kelas list for filter
+        $kelasList = \App\Models\Student::select('kelas')
+            ->distinct()
+            ->orderBy('kelas')
+            ->pluck('kelas');
 
         return view('permission.index', compact(
             'permissions',
             'pendingCount',
             'approvedCount',
             'rejectedCount',
-            'totalCount'
+            'totalCount',
+            'kelasList'
         ));
     }
 
