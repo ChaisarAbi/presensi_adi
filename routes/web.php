@@ -71,16 +71,25 @@ Route::middleware('auth')->group(function () {
         Route::get('/realtime-updates', [MonitoringController::class, 'realtimeUpdates'])->name('monitoring.realtimeUpdates');
     });
     
-// User Management routes (admin only)
-Route::middleware('role:admin')->prefix('users')->group(function () {
-    Route::get('/', [UserController::class, 'index'])->name('users.index');
-    Route::get('/create', [UserController::class, 'create'])->name('users.create');
-    Route::post('/', [UserController::class, 'store'])->name('users.store');
-    Route::get('/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
-    Route::put('/{id}', [UserController::class, 'update'])->name('users.update');
-    Route::delete('/{id}', [UserController::class, 'destroy'])->name('users.destroy');
-    Route::post('/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggleStatus');
-});
-
+    // User Management routes (admin only)
+    Route::middleware('role:admin')->prefix('users')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('users.index');
+        Route::get('/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('/', [UserController::class, 'store'])->name('users.store');
+        Route::get('/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('/{id}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::post('/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggleStatus');
+    });
+    
+    // Report routes (admin & guru)
+    Route::middleware('role:admin,guru')->prefix('report')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ReportController::class, 'index'])->name('report.index');
+        Route::get('/class', [\App\Http\Controllers\ReportController::class, 'classReport'])->name('report.class');
+        Route::get('/student', [\App\Http\Controllers\ReportController::class, 'studentReport'])->name('report.student');
+        Route::get('/chart-data', [\App\Http\Controllers\ReportController::class, 'chartData'])->name('report.chartData');
+        Route::post('/export-pdf', [\App\Http\Controllers\ReportController::class, 'exportPdf'])->name('report.exportPdf');
+    });
+    
 });
 require __DIR__.'/test-sync.php';

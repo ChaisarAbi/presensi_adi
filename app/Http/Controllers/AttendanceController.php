@@ -57,10 +57,10 @@ class AttendanceController extends Controller
             ], 400);
         }
 
-        // Check if already attended today for masuk
+        // Check if already attended today for masuk (including Terlambat)
         $existingAttendance = Attendance::where('student_id', $student->id)
             ->whereDate('tanggal', today())
-            ->where('status', 'Hadir Masuk')
+            ->whereIn('status', ['Hadir Masuk', 'Terlambat'])
             ->first();
 
         if ($existingAttendance) {
@@ -70,14 +70,21 @@ class AttendanceController extends Controller
             ], 400);
         }
 
-        // Check time (jam masuk: 07:00)
+        // Check time (jam masuk: 07:00, batas keterlambatan: 09:00)
         $jamMasuk = '07:00:00';
+        $batasKeterlambatan = '09:00:00';
         $currentTime = now()->format('H:i:s');
 
-        if ($currentTime > $jamMasuk) {
+        $status = 'Hadir Masuk';
+        
+        if ($currentTime > $jamMasuk && $currentTime <= $batasKeterlambatan) {
+            // Terlambat tapi masih dalam batas waktu
+            $status = 'Terlambat';
+        } elseif ($currentTime > $batasKeterlambatan) {
+            // Sudah lewat batas keterlambatan
             return response()->json([
                 'success' => false,
-                'message' => 'Waktu absensi masuk sudah lewat.',
+                'message' => 'Waktu absensi masuk sudah lewat. Batas keterlambatan sampai jam 09:00.',
             ], 400);
         }
 
@@ -86,7 +93,7 @@ class AttendanceController extends Controller
             'student_id' => $student->id,
             'tanggal' => today(),
             'waktu' => now()->format('H:i:s'),
-            'status' => 'Hadir Masuk',
+            'status' => $status,
         ]);
 
         return response()->json([
@@ -206,6 +213,9 @@ class AttendanceController extends Controller
         $hadirCount = Attendance::where('student_id', $student->id)
             ->whereIn('status', ['Hadir Masuk', 'Hadir Pulang'])
             ->count();
+        $terlambatCount = Attendance::where('student_id', $student->id)
+            ->where('status', 'Terlambat')
+            ->count();
         $izinCount = Attendance::where('student_id', $student->id)
             ->where('status', 'Izin')
             ->count();
@@ -215,6 +225,7 @@ class AttendanceController extends Controller
         
         $stats = [
             'hadir' => $hadirCount,
+            'terlambat' => $terlambatCount,
             'izin' => $izinCount,
             'tidak_hadir' => $tidakHadirCount,
             'total' => $totalAttendances,
@@ -224,6 +235,7 @@ class AttendanceController extends Controller
         $chartLabels = [];
         $chartData = [
             'hadir' => [],
+            'terlambat' => [],
             'izin' => [],
             'tidak_hadir' => [],
         ];
@@ -242,6 +254,14 @@ class AttendanceController extends Controller
                 ->whereIn('status', ['Hadir Masuk', 'Hadir Pulang'])
                 ->count();
             $chartData['hadir'][] = $hadirMonth;
+            
+            // Terlambat count for this month
+            $terlambatMonth = Attendance::where('student_id', $student->id)
+                ->whereMonth('tanggal', $date->month)
+                ->whereYear('tanggal', $date->year)
+                ->where('status', 'Terlambat')
+                ->count();
+            $chartData['terlambat'][] = $terlambatMonth;
             
             // Izin count for this month
             $izinMonth = Attendance::where('student_id', $student->id)

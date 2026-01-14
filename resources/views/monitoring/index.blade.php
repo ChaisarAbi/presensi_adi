@@ -47,28 +47,42 @@
 
 <!-- Stats Cards -->
 <div class="row mb-4">
-    <div class="col-md-3 col-6 mb-3">
+    <div class="col-md-2 col-6 mb-3">
         <div class="card stat-card">
-            <div class="stat-number text-primary">{{ $hadirMasuk + $hadirPulang }}</div>
-            <div class="stat-label">Hadir</div>
+            <div class="stat-number text-primary">{{ $hadirMasuk }}</div>
+            <div class="stat-label">Hadir Masuk</div>
         </div>
     </div>
     
-    <div class="col-md-3 col-6 mb-3">
+    <div class="col-md-2 col-6 mb-3">
+        <div class="card stat-card">
+            <div class="stat-number text-warning">{{ $terlambat }}</div>
+            <div class="stat-label">Terlambat</div>
+        </div>
+    </div>
+    
+    <div class="col-md-2 col-6 mb-3">
+        <div class="card stat-card">
+            <div class="stat-number text-success">{{ $hadirPulang }}</div>
+            <div class="stat-label">Hadir Pulang</div>
+        </div>
+    </div>
+    
+    <div class="col-md-2 col-6 mb-3">
         <div class="card stat-card">
             <div class="stat-number text-warning">{{ $izin }}</div>
             <div class="stat-label">Izin</div>
         </div>
     </div>
     
-    <div class="col-md-3 col-6 mb-3">
+    <div class="col-md-2 col-6 mb-3">
         <div class="card stat-card">
             <div class="stat-number text-danger">{{ $tidakHadir }}</div>
             <div class="stat-label">Tidak Hadir</div>
         </div>
     </div>
     
-    <div class="col-md-3 col-6 mb-3">
+    <div class="col-md-2 col-6 mb-3">
         <div class="card stat-card">
             <div class="stat-number text-info">{{ $totalStudents }}</div>
             <div class="stat-label">Total Siswa</div>
@@ -91,6 +105,10 @@
                             <td class="text-end">{{ $hadirMasuk }}</td>
                         </tr>
                         <tr>
+                            <td><strong>Terlambat</strong></td>
+                            <td class="text-end">{{ $terlambat }}</td>
+                        </tr>
+                        <tr>
                             <td><strong>Hadir Pulang</strong></td>
                             <td class="text-end">{{ $hadirPulang }}</td>
                         </tr>
@@ -104,7 +122,7 @@
                         </tr>
                         <tr class="table-light">
                             <td><strong>Total Kehadiran</strong></td>
-                            <td class="text-end"><strong>{{ $hadirMasuk + $hadirPulang + $izin + $tidakHadir }}</strong></td>
+                            <td class="text-end"><strong>{{ $hadirMasuk + $terlambat + $hadirPulang + $izin + $tidakHadir }}</strong></td>
                         </tr>
                     </table>
                 </div>
@@ -163,6 +181,7 @@
                                         
                                         $statusClass = 'secondary';
                                         if ($status == 'Hadir Masuk' || $status == 'Hadir Pulang') $statusClass = 'success';
+                                        if ($status == 'Terlambat') $statusClass = 'warning';
                                         if ($status == 'Izin') $statusClass = 'warning';
                                         if ($status == 'Tidak Hadir') $statusClass = 'danger';
                                         if ($status == 'Belum Absen') $statusClass = 'secondary';

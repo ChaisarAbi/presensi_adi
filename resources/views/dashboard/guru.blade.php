@@ -69,7 +69,7 @@
                         </a>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <a href="#" class="btn btn-success w-100">
+                        <a href="{{ route('report.index') }}" class="btn btn-success w-100">
                             <i class="bi bi-file-earmark-text"></i> Laporan
                         </a>
                     </div>
@@ -175,4 +175,4 @@
     });
 </script>
 @endpush
-@endsection
+@endsection                                

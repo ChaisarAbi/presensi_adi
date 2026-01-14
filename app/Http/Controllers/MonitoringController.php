@@ -52,6 +52,15 @@ class MonitoringController extends Controller
             })
             ->count();
         
+        $terlambat = Attendance::whereDate('tanggal', $tanggal)
+            ->where('status', 'Terlambat')
+            ->when($kelas !== 'all', function ($q) use ($kelas) {
+                $q->whereHas('student', function ($q2) use ($kelas) {
+                    $q2->where('kelas', $kelas);
+                });
+            })
+            ->count();
+        
         $hadirPulang = Attendance::whereDate('tanggal', $tanggal)
             ->where('status', 'Hadir Pulang')
             ->when($kelas !== 'all', function ($q) use ($kelas) {
@@ -98,6 +107,7 @@ class MonitoringController extends Controller
             'tanggal',
             'totalStudents',
             'hadirMasuk',
+            'terlambat',
             'hadirPulang',
             'izin',
             'tidakHadir'
@@ -122,6 +132,15 @@ class MonitoringController extends Controller
         // Get statistics for the selected date
         $hadirMasuk = Attendance::whereDate('tanggal', $tanggal)
             ->where('status', 'Hadir Masuk')
+            ->when($kelas !== 'all', function ($q) use ($kelas) {
+                $q->whereHas('student', function ($q2) use ($kelas) {
+                    $q2->where('kelas', $kelas);
+                });
+            })
+            ->count();
+        
+        $terlambat = Attendance::whereDate('tanggal', $tanggal)
+            ->where('status', 'Terlambat')
             ->when($kelas !== 'all', function ($q) use ($kelas) {
                 $q->whereHas('student', function ($q2) use ($kelas) {
                     $q2->where('kelas', $kelas);
@@ -156,7 +175,7 @@ class MonitoringController extends Controller
             })
             ->count();
         
-        $totalHadir = $hadirMasuk + $hadirPulang;
+        $totalHadir = $hadirMasuk + $terlambat + $hadirPulang;
         
         // Get total students
         $totalStudents = Student::when($kelas !== 'all', function ($q) use ($kelas) {
