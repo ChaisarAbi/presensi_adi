@@ -15,7 +15,7 @@
 <div class="row mb-4">
     <div class="col-md-3 col-6 mb-3">
         <div class="card stat-card">
-            <div class="stat-number text-primary">{{ $todayAttendances }}</div>
+            <div class="stat-number text-primary">{{ $presentToday }}</div>
             <div class="stat-label">Hadir Hari Ini</div>
         </div>
     </div>
@@ -24,6 +24,20 @@
         <div class="card stat-card">
             <div class="stat-number text-warning">{{ $absentToday }}</div>
             <div class="stat-label">Tidak Hadir</div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card">
+            <div class="stat-number text-danger">{{ $lateToday }}</div>
+            <div class="stat-label">Terlambat</div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card">
+            <div class="stat-number text-info">{{ $permissionToday }}</div>
+            <div class="stat-label">Izin</div>
         </div>
     </div>
     
@@ -147,13 +161,21 @@
     const todayChart = new Chart(ctx, {
         type: 'pie',
         data: {
-            labels: ['Hadir', 'Tidak Hadir', 'Izin Pending'],
+            labels: ['Hadir', 'Tidak Hadir', 'Terlambat', 'Izin', 'Belum Absen'],
             datasets: [{
-                data: [{{ $todayAttendances }}, {{ $absentToday }}, {{ $pendingPermissions }}],
+                data: [
+                    {{ $presentToday }}, 
+                    {{ $absentToday }}, 
+                    {{ $lateToday }}, 
+                    {{ $permissionToday }},
+                    {{ $notCheckedIn }}
+                ],
                 backgroundColor: [
-                    '#198754',
-                    '#dc3545',
-                    '#ffc107'
+                    '#198754', // Hadir - hijau
+                    '#dc3545', // Tidak Hadir - merah
+                    '#ffc107', // Terlambat - kuning
+                    '#fd7e14', // Izin - orange
+                    '#6c757d'  // Belum Absen - abu-abu
                 ],
                 borderWidth: 1
             }]
@@ -164,6 +186,18 @@
             plugins: {
                 legend: {
                     position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += context.raw + ' siswa';
+                            return label;
+                        }
+                    }
                 }
             }
         }

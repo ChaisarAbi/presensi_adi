@@ -129,15 +129,42 @@ class DashboardController extends Controller
         $user = Auth::user();
         $kelas = $user->kelas ?? 'Semua Kelas'; // Assuming teacher has kelas field
         
-        $todayAttendances = Attendance::whereDate('tanggal', today())
+        // Get total students in the class
+        $totalStudents = Student::when($kelas !== 'Semua Kelas', function ($query) use ($kelas) {
+            return $query->where('kelas', $kelas);
+        })->count();
+        
+        // Get today's attendance statistics
+        $todayAttendancesQuery = Attendance::whereDate('tanggal', today())
             ->when($kelas !== 'Semua Kelas', function ($query) use ($kelas) {
                 return $query->whereHas('student', function ($q) use ($kelas) {
                     $q->where('kelas', $kelas);
                 });
-            })
+            });
+        
+        // Count students who are present (Hadir Masuk or Hadir Pulang)
+        $presentToday = (clone $todayAttendancesQuery)
+            ->whereIn('status', ['Hadir Masuk', 'Hadir Pulang'])
             ->count();
             
-        $absentToday = Student::count() - $todayAttendances;
+        // Count students who are absent (Tidak Hadir)
+        $absentToday = (clone $todayAttendancesQuery)
+            ->where('status', 'Tidak Hadir')
+            ->count();
+            
+        // Count students who are late (Terlambat)
+        $lateToday = (clone $todayAttendancesQuery)
+            ->where('status', 'Terlambat')
+            ->count();
+            
+        // Count students with permission (Izin)
+        $permissionToday = (clone $todayAttendancesQuery)
+            ->where('status', 'Izin')
+            ->count();
+            
+        // Students who haven't checked in yet
+        $notCheckedIn = $totalStudents - ($presentToday + $absentToday + $lateToday + $permissionToday);
+        
         $pendingPermissions = Permission::where('status', 'Pending')
             ->when($kelas !== 'Semua Kelas', function ($query) use ($kelas) {
                 return $query->whereHas('student', function ($q) use ($kelas) {
@@ -148,9 +175,14 @@ class DashboardController extends Controller
 
         return view('dashboard.guru', compact(
             'kelas',
-            'todayAttendances',
+            'todayAttendances', // Keep for backward compatibility
             'absentToday',
-            'pendingPermissions'
+            'pendingPermissions',
+            'totalStudents',
+            'presentToday',
+            'lateToday',
+            'permissionToday',
+            'notCheckedIn'
         ));
     }
 
