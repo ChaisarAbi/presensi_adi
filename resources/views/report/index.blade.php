@@ -48,7 +48,7 @@
 
 <!-- Report Type Cards -->
 <div class="row mb-4">
-    <div class="col-md-6 mb-4">
+    <div class="col-md-4 mb-4">
         <div class="card report-card border-primary">
             <div class="card-body text-center">
                 <div class="report-icon text-primary">
@@ -63,7 +63,7 @@
         </div>
     </div>
     
-    <div class="col-md-6 mb-4">
+    <div class="col-md-4 mb-4">
         <div class="card report-card border-success">
             <div class="card-body text-center">
                 <div class="report-icon text-success">
@@ -74,6 +74,21 @@
                 <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#studentReportModal">
                     <i class="bi bi-file-earmark-person"></i> Buat Laporan
                 </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card report-card border-warning">
+            <div class="card-body text-center">
+                <div class="report-icon text-warning">
+                    <i class="bi bi-file-earmark-pdf"></i>
+                </div>
+                <h4 class="card-title">Generate PDF</h4>
+                <p class="card-text">Generate laporan dalam format PDF untuk download langsung.</p>
+                <a href="{{ route('report.pdf.form') }}" class="btn btn-warning">
+                    <i class="bi bi-file-earmark-pdf"></i> Buat PDF
+                </a>
             </div>
         </div>
     </div>

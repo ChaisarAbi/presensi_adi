@@ -8,7 +8,9 @@ use App\Models\Permission;
 use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportController extends Controller
 {
@@ -420,5 +422,200 @@ class ReportController extends Controller
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Generate and download class report as PDF (Optimized)
+     */
+    public function generateClassPdf(Request $request)
+    {
+        // Set higher memory limit for PDF generation
+        ini_set('memory_limit', '512M');
+        set_time_limit(300); // 5 minutes
+
+        $user = Auth::user();
+        
+        if (!in_array($user->role, ['admin', 'guru'])) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $request->validate([
+            'kelas' => 'required|string',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $kelas = $request->kelas;
+        $startDate = Carbon::parse($request->start_date);
+        $endDate = Carbon::parse($request->end_date);
+        $totalDays = $startDate->diffInDays($endDate) + 1;
+
+        // Optimized SQL query - single query untuk semua data
+        $stats = DB::select("
+            SELECT 
+                s.id,
+                s.nis,
+                u.name,
+                COALESCE(SUM(CASE WHEN a.status = 'Hadir Masuk' THEN 1 ELSE 0 END), 0) as hadir_masuk,
+                COALESCE(SUM(CASE WHEN a.status = 'Terlambat' THEN 1 ELSE 0 END), 0) as terlambat,
+                COALESCE(SUM(CASE WHEN a.status = 'Hadir Pulang' THEN 1 ELSE 0 END), 0) as hadir_pulang,
+                COALESCE(SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END), 0) as izin,
+                COALESCE(SUM(CASE WHEN a.status = 'Tidak Hadir' THEN 1 ELSE 0 END), 0) as tidak_hadir
+            FROM students s
+            LEFT JOIN users u ON s.user_id = u.id
+            LEFT JOIN attendances a ON s.id = a.student_id 
+                AND a.tanggal BETWEEN ? AND ?
+            WHERE s.kelas = ?
+            GROUP BY s.id, s.nis, u.name
+            ORDER BY s.nis
+        ", [$startDate->format('Y-m-d'), $endDate->format('Y-m-d'), $kelas]);
+
+        // Calculate totals
+        $totalStudents = count($stats);
+        $totalHadirMasuk = 0;
+        $totalTerlambat = 0;
+        $totalHadirPulang = 0;
+        $totalIzin = 0;
+        $totalTidakHadir = 0;
+
+        foreach ($stats as $row) {
+            $totalHadirMasuk += $row->hadir_masuk;
+            $totalTerlambat += $row->terlambat;
+            $totalHadirPulang += $row->hadir_pulang;
+            $totalIzin += $row->izin;
+            $totalTidakHadir += $row->tidak_hadir;
+        }
+
+        $summary = [
+            'total_students' => $totalStudents,
+            'total_days' => $totalDays,
+            'total_hadir_masuk' => $totalHadirMasuk,
+            'total_terlambat' => $totalTerlambat,
+            'total_hadir_pulang' => $totalHadirPulang,
+            'total_izin' => $totalIzin,
+            'total_tidak_hadir' => $totalTidakHadir,
+        ];
+
+        // Generate PDF
+        $pdf = Pdf::loadView('report.pdf.class', [
+            'stats' => $stats,
+            'summary' => $summary,
+            'kelas' => $kelas,
+            'start_date' => $startDate->format('d/m/Y'),
+            'end_date' => $endDate->format('d/m/Y'),
+            'generated_at' => now()->format('d/m/Y H:i:s'),
+        ]);
+
+        return $pdf->download("laporan-kelas-{$kelas}-{$startDate->format('Ymd')}-{$endDate->format('Ymd')}.pdf");
+    }
+
+    /**
+     * Generate and download student report as PDF (Optimized)
+     */
+    public function generateStudentPdf(Request $request)
+    {
+        // Set higher memory limit for PDF generation
+        ini_set('memory_limit', '512M');
+        set_time_limit(300); // 5 minutes
+
+        $user = Auth::user();
+        
+        if (!in_array($user->role, ['admin', 'guru'])) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $request->validate([
+            'student_id' => 'required|exists:students,id',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $studentId = $request->student_id;
+        $startDate = Carbon::parse($request->start_date);
+        $endDate = Carbon::parse($request->end_date);
+        $totalDays = $startDate->diffInDays($endDate) + 1;
+
+        // Get student data
+        $student = Student::with(['user' => function($query) {
+            $query->select('id', 'name');
+        }])->findOrFail($studentId);
+
+        // Optimized query for attendance statistics
+        $attendanceStats = DB::select("
+            SELECT 
+                status,
+                COUNT(*) as count
+            FROM attendances 
+            WHERE student_id = ? 
+                AND tanggal BETWEEN ? AND ?
+            GROUP BY status
+        ", [$studentId, $startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
+
+        // Convert to array
+        $statsArray = [];
+        foreach ($attendanceStats as $stat) {
+            $statsArray[$stat->status] = $stat->count;
+        }
+
+        $hadirMasuk = $statsArray['Hadir Masuk'] ?? 0;
+        $terlambat = $statsArray['Terlambat'] ?? 0;
+        $hadirPulang = $statsArray['Hadir Pulang'] ?? 0;
+        $izin = $statsArray['Izin'] ?? 0;
+        $tidakHadir = $statsArray['Tidak Hadir'] ?? 0;
+        
+        $totalAttendance = $hadirMasuk + $terlambat + $hadirPulang + $izin + $tidakHadir;
+        $attendancePercentage = $totalDays > 0 ? round(($totalAttendance / $totalDays) * 100, 1) : 0;
+
+        // Get recent attendances (last 20 only for PDF)
+        $recentAttendances = Attendance::where('student_id', $studentId)
+            ->whereBetween('tanggal', [$startDate, $endDate])
+            ->orderBy('tanggal', 'desc')
+            ->orderBy('waktu', 'desc')
+            ->limit(20)
+            ->get(['tanggal', 'waktu', 'status']);
+
+        $statistics = [
+            'total_days' => $totalDays,
+            'hadir_masuk' => $hadirMasuk,
+            'terlambat' => $terlambat,
+            'hadir_pulang' => $hadirPulang,
+            'izin' => $izin,
+            'tidak_hadir' => $tidakHadir,
+            'total_attendance' => $totalAttendance,
+            'attendance_percentage' => $attendancePercentage,
+        ];
+
+        // Generate PDF
+        $pdf = Pdf::loadView('report.pdf.student', [
+            'student' => $student,
+            'statistics' => $statistics,
+            'recent_attendances' => $recentAttendances,
+            'start_date' => $startDate->format('d/m/Y'),
+            'end_date' => $endDate->format('d/m/Y'),
+            'generated_at' => now()->format('d/m/Y H:i:s'),
+        ]);
+
+        $fileName = "laporan-siswa-{$student->nis}-{$startDate->format('Ymd')}-{$endDate->format('Ymd')}.pdf";
+        return $pdf->download($fileName);
+    }
+
+    /**
+     * Simple form for PDF generation
+     */
+    public function pdfForm()
+    {
+        $user = Auth::user();
+        
+        if (!in_array($user->role, ['admin', 'guru'])) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        // Get class list for filter
+        $kelasList = Student::select('kelas')->distinct()->pluck('kelas');
+        
+        // Get student list for per-student report
+        $students = Student::with('user')->get();
+
+        return view('report.pdf-form', compact('kelasList', 'students'));
     }
 }

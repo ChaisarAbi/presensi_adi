@@ -89,6 +89,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/student', [\App\Http\Controllers\ReportController::class, 'studentReport'])->name('report.student');
         Route::get('/chart-data', [\App\Http\Controllers\ReportController::class, 'chartData'])->name('report.chartData');
         Route::post('/export-pdf', [\App\Http\Controllers\ReportController::class, 'exportPdf'])->name('report.exportPdf');
+        
+        // PDF Generation routes
+        Route::get('/pdf-form', [\App\Http\Controllers\ReportController::class, 'pdfForm'])->name('report.pdf.form');
+        Route::get('/generate-class-pdf', [\App\Http\Controllers\ReportController::class, 'generateClassPdf'])->name('report.generate.class.pdf');
+        Route::get('/generate-student-pdf', [\App\Http\Controllers\ReportController::class, 'generateStudentPdf'])->name('report.generate.student.pdf');
     });
     
 });
