@@ -110,6 +110,37 @@
     </div>
 </div>
 
+<!-- Attendance Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card">
+            <div class="stat-number text-success" id="stat-present-today">{{ $presentToday }}</div>
+            <div class="stat-label">Hadir Hari Ini</div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card">
+            <div class="stat-number text-danger" id="stat-absent-today">{{ $absentToday }}</div>
+            <div class="stat-label">Tidak Hadir</div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card">
+            <div class="stat-number text-warning" id="stat-late-today">{{ $lateToday }}</div>
+            <div class="stat-label">Terlambat</div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card">
+            <div class="stat-number text-info" id="stat-permission-today">{{ $permissionToday }}</div>
+            <div class="stat-label">Izin</div>
+        </div>
+    </div>
+</div>
+
 <!-- Quick Actions -->
 <div class="row mb-4">
     <div class="col-12">
@@ -333,6 +364,12 @@
         $('#stat-total-teachers').text(data.totalTeachers);
         $('#stat-today-attendances').text(data.todayAttendances);
         $('#stat-pending-permissions').text(data.pendingPermissions);
+        
+        // Update attendance stats cards
+        $('#stat-present-today').text(data.presentToday || 0);
+        $('#stat-absent-today').text(data.absentToday || 0);
+        $('#stat-late-today').text(data.lateToday || 0);
+        $('#stat-permission-today').text(data.permissionToday || 0);
         
         // Update system info
         $('#server-time').text(data.timestamp);

@@ -25,6 +25,29 @@ class DashboardController extends Controller
         $totalTeachers = User::where('role', 'guru')->count();
         $todayAttendances = Attendance::whereDate('tanggal', today())->count();
         $pendingPermissions = Permission::where('status', 'Pending')->count();
+        
+        // Get today's attendance statistics for admin (all classes)
+        $todayAttendancesQuery = Attendance::whereDate('tanggal', today());
+        
+        // Count students who are present (Hadir Masuk or Hadir Pulang)
+        $presentToday = (clone $todayAttendancesQuery)
+            ->whereIn('status', ['Hadir Masuk', 'Hadir Pulang'])
+            ->count();
+            
+        // Count students who are absent (Tidak Hadir)
+        $absentToday = (clone $todayAttendancesQuery)
+            ->where('status', 'Tidak Hadir')
+            ->count();
+            
+        // Count students who are late (Terlambat)
+        $lateToday = (clone $todayAttendancesQuery)
+            ->where('status', 'Terlambat')
+            ->count();
+            
+        // Count students with permission (Izin)
+        $permissionToday = (clone $todayAttendancesQuery)
+            ->where('status', 'Izin')
+            ->count();
 
         // Get recent activities
         $recentActivities = $this->getRecentActivities();
@@ -36,6 +59,10 @@ class DashboardController extends Controller
                 'totalTeachers' => $totalTeachers,
                 'todayAttendances' => $todayAttendances,
                 'pendingPermissions' => $pendingPermissions,
+                'presentToday' => $presentToday,
+                'absentToday' => $absentToday,
+                'lateToday' => $lateToday,
+                'permissionToday' => $permissionToday,
                 'timestamp' => now()->format('H:i:s'),
                 'recentActivities' => $this->getRecentActivities()
             ]);
@@ -46,6 +73,10 @@ class DashboardController extends Controller
             'totalTeachers',
             'todayAttendances',
             'pendingPermissions',
+            'presentToday',
+            'absentToday',
+            'lateToday',
+            'permissionToday',
             'recentActivities'
         ));
     }
