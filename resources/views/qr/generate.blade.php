@@ -155,5 +155,4 @@
     }
 </script>
 @endpush
-@endsection</script>
-                                @endphp
+@endsection

@@ -218,4 +218,4 @@
     }
 </script>
 @endpush
-@endsection                        Waktu mengikuti <strong>server time</strong>
+@endsection            
