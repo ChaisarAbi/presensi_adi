@@ -598,6 +598,12 @@
             const form = $(this);
             const originalSubmit = form.find('button[type="submit"], input[type="submit"]');
             
+            // Skip AJAX for login form to allow normal submission
+            if (form.attr('action') && form.attr('action').includes('/login')) {
+                console.log('Login form detected, allowing normal submission');
+                return true; // Allow normal form submission
+            }
+            
             // Store original button text and disable
             const originalHtml = originalSubmit.html();
             originalSubmit.prop('disabled', true).html('<i class="bi bi-arrow-clockwise spin"></i> Processing...');
@@ -620,6 +626,9 @@
                                     location.reload();
                                 }
                             }, 1500);
+                        } else {
+                            // If no JSON response, assume normal form submission worked
+                            originalSubmit.prop('disabled', false).html(originalHtml);
                         }
                     },
                     error: function(xhr, status, error) {
