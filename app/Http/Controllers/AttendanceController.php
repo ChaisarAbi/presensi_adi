@@ -57,17 +57,28 @@ class AttendanceController extends Controller
             ], 400);
         }
 
-        // Check if already attended today for masuk (including Terlambat)
+        // Check if already attended today for masuk (including Terlambat) OR has izin/tidak hadir
         $existingAttendance = Attendance::where('student_id', $student->id)
             ->whereDate('tanggal', today())
-            ->whereIn('status', ['Hadir Masuk', 'Terlambat'])
+            ->where(function($query) {
+                $query->whereIn('status', ['Hadir Masuk', 'Terlambat'])
+                      ->orWhere('status', 'Izin')
+                      ->orWhere('status', 'Tidak Hadir');
+            })
             ->first();
 
         if ($existingAttendance) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Anda sudah melakukan absensi masuk hari ini.',
-            ], 400);
+            if (in_array($existingAttendance->status, ['Hadir Masuk', 'Terlambat'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda sudah melakukan absensi masuk hari ini.',
+                ], 400);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda sudah memiliki status ' . $existingAttendance->status . ' hari ini. Tidak bisa melakukan absensi masuk.',
+                ], 400);
+            }
         }
 
         // Check time (jam masuk: 07:00, batas keterlambatan: 09:00)
@@ -140,17 +151,28 @@ class AttendanceController extends Controller
             ], 400);
         }
 
-        // Check if already attended today for pulang
+        // Check if already attended today for pulang OR has izin/tidak hadir
         $existingAttendance = Attendance::where('student_id', $student->id)
             ->whereDate('tanggal', today())
-            ->where('status', 'Hadir Pulang')
+            ->where(function($query) {
+                $query->where('status', 'Hadir Pulang')
+                      ->orWhere('status', 'Izin')
+                      ->orWhere('status', 'Tidak Hadir');
+            })
             ->first();
 
         if ($existingAttendance) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Anda sudah melakukan absensi pulang hari ini.',
-            ], 400);
+            if ($existingAttendance->status === 'Hadir Pulang') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda sudah melakukan absensi pulang hari ini.',
+                ], 400);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda sudah memiliki status ' . $existingAttendance->status . ' hari ini. Tidak bisa melakukan absensi pulang.',
+                ], 400);
+            }
         }
 
         // Check time (jam pulang: 14:00)
