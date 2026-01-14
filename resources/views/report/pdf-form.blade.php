@@ -227,8 +227,24 @@
                 
                 // Show loading state
                 const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating PDF...';
                 submitBtn.disabled = true;
+                
+                // Reset button state after 10 seconds (fallback in case PDF generation fails)
+                setTimeout(() => {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }, 10000);
+            });
+            
+            // Reset button state when navigating back to the page
+            window.addEventListener('pageshow', function(event) {
+                const submitBtn = reportForm.querySelector('button[type="submit"]');
+                if (submitBtn.disabled) {
+                    submitBtn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> Generate & Download PDF';
+                    submitBtn.disabled = false;
+                }
             });
 
             // Set max date for end_date to today
