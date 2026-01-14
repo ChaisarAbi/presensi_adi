@@ -175,7 +175,6 @@ class DashboardController extends Controller
 
         return view('dashboard.guru', compact(
             'kelas',
-            'todayAttendances', // Keep for backward compatibility
             'absentToday',
             'pendingPermissions',
             'totalStudents',
