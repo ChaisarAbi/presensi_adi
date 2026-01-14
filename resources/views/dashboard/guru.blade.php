@@ -58,19 +58,14 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                         <a href="{{ route('monitoring.index') }}" class="btn btn-primary w-100">
                             <i class="bi bi-graph-up"></i> Monitoring
                         </a>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                         <a href="{{ route('permission.index') }}" class="btn btn-warning w-100">
                             <i class="bi bi-clipboard-check"></i> Verifikasi Izin
-                        </a>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <a href="{{ route('report.index') }}" class="btn btn-success w-100">
-                            <i class="bi bi-file-earmark-text"></i> Laporan
                         </a>
                     </div>
                 </div>
@@ -176,3 +171,4 @@
 </script>
 @endpush
 @endsection                                
+    });

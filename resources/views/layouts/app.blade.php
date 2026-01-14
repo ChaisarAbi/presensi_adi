@@ -487,11 +487,6 @@
             <i class="bi bi-clipboard-check"></i>
             <span class="bottom-nav-label">Verifikasi</span>
         </a>
-        
-        <a href="{{ route('report.index') }}" class="bottom-nav-item {{ request()->routeIs('report.*') ? 'active' : '' }}">
-            <i class="bi bi-file-earmark-text"></i>
-            <span class="bottom-nav-label">Laporan</span>
-        </a>
         @endif
         
         @if(Auth::user()->role === 'admin')
@@ -542,3 +537,4 @@
     @stack('scripts')
 </body>
 </html>
+    
