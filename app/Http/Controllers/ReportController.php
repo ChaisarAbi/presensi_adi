@@ -509,9 +509,9 @@ class ReportController extends Controller
      */
     public function generateStudentPdf(Request $request)
     {
-        // Set memory limit for PDF generation
-        ini_set('memory_limit', '256M');
-        set_time_limit(180); // 3 minutes
+        // Set memory limit for PDF generation - REDUCED FOR VPS
+        ini_set('memory_limit', '128M');
+        set_time_limit(120); // 2 minutes
 
         $user = Auth::user();
         
