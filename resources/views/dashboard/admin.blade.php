@@ -219,12 +219,45 @@
     
     <div class="col-md-6 mb-4">
         <div class="card">
-            <div class="card-header">
-                <i class="bi bi-bar-chart"></i> Statistik Cepat
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-bar-chart"></i> Statistik Kehadiran Hari Ini
+                </div>
+                <div class="text-muted small" id="chart-updated-time">
+                    <i class="bi bi-clock"></i> {{ now()->format('H:i:s') }}
+                </div>
             </div>
             <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="quickStatsChart"></canvas>
+                <div class="chart-container" style="position: relative; height: 250px;">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+                <div class="mt-3">
+                    <div class="row text-center">
+                        <div class="col-3">
+                            <div class="stat-mini-card bg-success text-white rounded p-2">
+                                <div class="stat-mini-number">{{ $presentToday }}</div>
+                                <div class="stat-mini-label">Hadir</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="stat-mini-card bg-danger text-white rounded p-2">
+                                <div class="stat-mini-number">{{ $absentToday }}</div>
+                                <div class="stat-mini-label">Tidak Hadir</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="stat-mini-card bg-warning text-white rounded p-2">
+                                <div class="stat-mini-number">{{ $lateToday }}</div>
+                                <div class="stat-mini-label">Terlambat</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="stat-mini-card bg-info text-white rounded p-2">
+                                <div class="stat-mini-number">{{ $permissionToday }}</div>
+                                <div class="stat-mini-label">Izin</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -278,53 +311,105 @@
     </div>
 </div>
 
+@push('styles')
+<style>
+    /* Mini stat cards */
+    .stat-mini-card {
+        transition: transform 0.2s;
+    }
+    
+    .stat-mini-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .stat-mini-number {
+        font-size: 1.2rem;
+        font-weight: bold;
+        line-height: 1.2;
+    }
+    
+    .stat-mini-label {
+        font-size: 0.75rem;
+        opacity: 0.9;
+    }
+    
+    /* Chart container */
+    .chart-container {
+        position: relative;
+        height: 250px;
+    }
+</style>
+@endpush
+
 @push('scripts')
 <script>
-    // Quick stats chart
-    const ctx = document.getElementById('quickStatsChart').getContext('2d');
-    let quickStatsChart = null;
+    // Attendance chart
+    let attendanceChart = null;
     
-    function initChart() {
-        if (quickStatsChart) {
-            quickStatsChart.destroy();
+    function initAttendanceChart() {
+        const ctx = document.getElementById('attendanceChart').getContext('2d');
+        
+        if (attendanceChart) {
+            attendanceChart.destroy();
         }
         
-        quickStatsChart = new Chart(ctx, {
-            type: 'bar',
+        attendanceChart = new Chart(ctx, {
+            type: 'doughnut',
             data: {
-                labels: ['Siswa', 'Guru', 'Absensi', 'Izin'],
+                labels: ['Hadir', 'Tidak Hadir', 'Terlambat', 'Izin'],
                 datasets: [{
-                    label: 'Jumlah',
-                    data: [{{ $totalStudents }}, {{ $totalTeachers }}, {{ $todayAttendances }}, {{ $pendingPermissions }}],
-                    backgroundColor: [
-                        '#0d6efd',
-                        '#198754',
-                        '#ffc107',
-                        '#dc3545'
+                    data: [
+                        {{ $presentToday }},
+                        {{ $absentToday }},
+                        {{ $lateToday }},
+                        {{ $permissionToday }}
                     ],
-                    borderWidth: 1
+                    backgroundColor: [
+                        '#198754', // Hadir - hijau
+                        '#dc3545', // Tidak Hadir - merah
+                        '#ffc107', // Terlambat - kuning
+                        '#0dcaf0'  // Izin - biru
+                    ],
+                    borderWidth: 1,
+                    hoverOffset: 10
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                },
                 plugins: {
                     legend: {
-                        display: false
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                const value = context.raw;
+                                const total = {{ $presentToday + $absentToday + $lateToday + $permissionToday }};
+                                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                label += value + ' siswa (' + percentage + '%)';
+                                return label;
+                            }
+                        }
                     }
-                }
+                },
+                cutout: '60%'
             }
         });
     }
     
-    // Initialize chart
+    // Initialize charts
     $(document).ready(function() {
-        initChart();
+        initAttendanceChart();
         
         // Auto-refresh stats every 30 seconds
         setInterval(refreshDashboardStats, 30000);
@@ -346,8 +431,8 @@
                 // Update stats cards
                 updateStatsCards(response);
                 
-                // Update chart
-                updateChart(response);
+                // Update attendance chart
+                updateAttendanceChart(response);
                 
                 // Show update notification
                 showUpdateNotification(response.timestamp);
@@ -399,16 +484,25 @@
         }, 3000);
     }
     
-    function updateChart(data) {
-        // Update chart data
-        if (quickStatsChart) {
-            quickStatsChart.data.datasets[0].data = [
-                data.totalStudents || {{ $totalStudents }},
-                data.totalTeachers || {{ $totalTeachers }},
-                data.todayAttendances || {{ $todayAttendances }},
-                data.pendingPermissions || {{ $pendingPermissions }}
+    function updateAttendanceChart(data) {
+        // Update attendance chart data
+        if (attendanceChart) {
+            attendanceChart.data.datasets[0].data = [
+                data.presentToday || 0,
+                data.absentToday || 0,
+                data.lateToday || 0,
+                data.permissionToday || 0
             ];
-            quickStatsChart.update();
+            attendanceChart.update();
+            
+            // Update mini cards
+            $('.stat-mini-card:nth-child(1) .stat-mini-number').text(data.presentToday || 0);
+            $('.stat-mini-card:nth-child(2) .stat-mini-number').text(data.absentToday || 0);
+            $('.stat-mini-card:nth-child(3) .stat-mini-number').text(data.lateToday || 0);
+            $('.stat-mini-card:nth-child(4) .stat-mini-number').text(data.permissionToday || 0);
+            
+            // Update chart timestamp
+            $('#chart-updated-time').html('<i class="bi bi-clock"></i> ' + data.timestamp);
         }
     }
     
