@@ -28,8 +28,11 @@ class ReportController extends Controller
         // Get class list for filter
         $kelasList = Student::select('kelas')->distinct()->pluck('kelas');
         
-        // Get student list for per-student report
-        $students = Student::with('user')->get();
+        // Get student list for per-student report - MINIMAL COLUMNS ONLY
+        $students = Student::select('id', 'user_id', 'nis', 'kelas')
+            ->with(['user:id,name'])
+            ->limit(200) // Limit untuk mencegah data terlalu besar
+            ->get();
 
         return view('report.index', compact('kelasList', 'students'));
     }
@@ -161,13 +164,16 @@ class ReportController extends Controller
         // Skip logging to reduce memory usage
         // Report logging removed for performance optimization
 
-        return view('report.class', compact(
-            'kelas',
-            'startDate',
-            'endDate',
-            'reportData',
-            'classSummary'
-        ));
+        // Batasi data untuk mencegah memory overflow
+        $reportData = array_slice($reportData, 0, 200);
+        
+        return view('report.class', [
+            'kelas' => $kelas,
+            'start_date' => $startDate->format('Y-m-d'),
+            'end_date' => $endDate->format('Y-m-d'),
+            'reportData' => $reportData,
+            'classSummary' => $classSummary
+        ]);
     }
 
     /**
@@ -281,15 +287,20 @@ class ReportController extends Controller
         // Skip logging to reduce memory usage
         // Report logging removed for performance optimization
 
-        return view('report.student', compact(
-            'student',
-            'startDate',
-            'endDate',
-            'attendances',
-            'permissions',
-            'statistics',
-            'monthlyStats'
-        ));
+        // Batasi data untuk mencegah memory overflow
+        $attendances = $attendances->take(100);
+        $permissions = $permissions->take(50);
+        $monthlyStats = array_slice($monthlyStats, 0, 12); // Maksimal 12 bulan
+        
+        return view('report.student', [
+            'student' => $student,
+            'start_date' => $startDate->format('Y-m-d'),
+            'end_date' => $endDate->format('Y-m-d'),
+            'attendances' => $attendances,
+            'permissions' => $permissions,
+            'statistics' => $statistics,
+            'monthlyStats' => $monthlyStats
+        ]);
     }
 
     /**
@@ -467,6 +478,15 @@ class ReportController extends Controller
 
         // Generate PDF dengan try-catch untuk error handling
         try {
+            // Set DomPDF options untuk mengurangi memory usage
+            Pdf::setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => false,
+                'defaultFont' => 'sans-serif',
+                'isPhpEnabled' => false,
+                'isJavascriptEnabled' => false,
+            ]);
+            
             $pdf = Pdf::loadView('report.pdf.class', [
                 'stats' => $stats,
                 'summary' => $summary,
@@ -569,6 +589,15 @@ class ReportController extends Controller
 
         // Generate PDF with minimal data
         try {
+            // Set DomPDF options untuk mengurangi memory usage
+            Pdf::setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => false,
+                'defaultFont' => 'sans-serif',
+                'isPhpEnabled' => false,
+                'isJavascriptEnabled' => false,
+            ]);
+            
             $pdf = Pdf::loadView('report.pdf.student', [
                 'student' => $student,
                 'statistics' => $statistics,
@@ -601,8 +630,11 @@ class ReportController extends Controller
         // Get class list for filter
         $kelasList = Student::select('kelas')->distinct()->pluck('kelas');
         
-        // Get student list for per-student report
-        $students = Student::with('user')->get();
+        // Get student list for per-student report - MINIMAL COLUMNS ONLY
+        $students = Student::select('id', 'user_id', 'nis', 'kelas')
+            ->with(['user:id,name'])
+            ->limit(200) // Limit untuk mencegah data terlalu besar
+            ->get();
 
         return view('report.pdf-form', compact('kelasList', 'students'));
     }
