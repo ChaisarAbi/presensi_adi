@@ -158,23 +158,8 @@ class ReportController extends Controller
                 round($totalAttendancePercentage / $students->count(), 1) : 0,
         ];
 
-        // Log the report generation with minimal data
-        try {
-            Report::logReport(
-                'class',
-                'Laporan Kelas ' . $kelas,
-                [
-                    'kelas' => $kelas,
-                    'start_date' => $startDate->format('Y-m-d'),
-                    'end_date' => $endDate->format('Y-m-d'),
-                    // Removed heavy data to reduce memory usage
-                ],
-                $students->count()
-            );
-        } catch (\Exception $e) {
-            // Log error but don't break the report generation
-            \Log::error('Failed to log class report: ' . $e->getMessage());
-        }
+        // Skip logging to reduce memory usage
+        // Report logging removed for performance optimization
 
         return view('report.class', compact(
             'kelas',
@@ -293,24 +278,8 @@ class ReportController extends Controller
             'attendance_percentage' => $attendancePercentage,
         ];
 
-        // Log the report generation with minimal data
-        try {
-            Report::logReport(
-                'student',
-                'Laporan Siswa ' . ($student->user->name ?? 'N/A'),
-                [
-                    'student_id' => $studentId,
-                    'student_name' => $student->user->name ?? 'N/A',
-                    'start_date' => $startDate->format('Y-m-d'),
-                    'end_date' => $endDate->format('Y-m-d'),
-                    // Removed heavy data to reduce memory usage
-                ],
-                $attendances->count()
-            );
-        } catch (\Exception $e) {
-            // Log error but don't break the report generation
-            \Log::error('Failed to log student report: ' . $e->getMessage());
-        }
+        // Skip logging to reduce memory usage
+        // Report logging removed for performance optimization
 
         return view('report.student', compact(
             'student',
@@ -638,3 +607,5 @@ class ReportController extends Controller
         return view('report.pdf-form', compact('kelasList', 'students'));
     }
 }
+        
+        
