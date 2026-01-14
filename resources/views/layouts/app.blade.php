@@ -598,9 +598,13 @@
             const form = $(this);
             const originalSubmit = form.find('button[type="submit"], input[type="submit"]');
             
-            // Skip AJAX for login form to allow normal submission
-            if (form.attr('action') && form.attr('action').includes('/login')) {
-                console.log('Login form detected, allowing normal submission');
+            // Skip AJAX for login and user creation forms to allow normal submission
+            if (form.attr('action') && (
+                form.attr('action').includes('/login') || 
+                form.attr('action').includes('/users/store') ||
+                form.attr('action').includes('/users/update')
+            )) {
+                console.log('Form detected for normal submission:', form.attr('action'));
                 return true; // Allow normal form submission
             }
             
