@@ -4,28 +4,29 @@
 
 @push('styles')
 <style>
-    /* Fix padding overflow for QR page */
-    .container {
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
-        max-width: 100%;
+    /* Fix overflow and padding issues - consistent with other pages */
+    body {
         overflow-x: hidden;
     }
     
+    .container-fluid, .container {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    
     @media (min-width: 768px) {
-        .container {
+        .container-fluid, .container {
             padding-left: 1rem;
             padding-right: 1rem;
         }
     }
     
-    /* Fix table responsive overflow */
+    /* Fix table overflow - consistent styling */
     .table-responsive {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         margin: 0 -0.5rem;
         padding: 0 0.5rem;
-        width: calc(100% + 1rem);
     }
     
     .table-responsive table {
@@ -33,47 +34,20 @@
         margin-bottom: 0;
     }
     
-    /* Mobile optimization */
+    /* Mobile view */
     @media (max-width: 768px) {
-        .container {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
-        }
-        
-        .card {
-            margin-left: -0.5rem;
-            margin-right: -0.5rem;
-            border-radius: 0;
-            border-left: none;
-            border-right: none;
-        }
-        
-        .card-header {
-            border-radius: 0 !important;
-        }
-        
-        .card-body {
-            padding: 0.75rem;
-        }
-        
         .table-responsive {
             margin: 0 -0.5rem;
             padding: 0 0.5rem;
-            width: calc(100% + 1rem);
         }
         
         .table-responsive table {
             min-width: 500px;
         }
         
-        .row {
-            margin-left: -0.5rem;
-            margin-right: -0.5rem;
-        }
-        
-        .row > [class*="col-"] {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
+        /* Fix card body padding on mobile */
+        .card-body {
+            padding: 0.75rem;
         }
         
         .btn {
@@ -85,44 +59,13 @@
             width: auto;
             margin-bottom: 0;
         }
-        
-        h2.h4 {
-            font-size: 1.25rem;
-            margin-bottom: 0.5rem;
-            padding-left: 0.5rem;
-        }
-        
-        .text-muted {
-            font-size: 0.85rem;
-            padding-left: 0.5rem;
-        }
     }
     
-    /* Extra small devices */
-    @media (max-width: 575.98px) {
-        .container {
-            padding-left: 0.25rem;
-            padding-right: 0.25rem;
-        }
-        
-        .table-responsive {
-            margin: 0 -0.25rem;
-            padding: 0 0.25rem;
-            width: calc(100% + 0.5rem);
-        }
-        
+    /* Desktop view */
+    @media (min-width: 769px) {
         .table-responsive table {
-            min-width: 400px;
-            font-size: 0.85rem;
-        }
-        
-        .table th, .table td {
-            padding: 0.375rem 0.25rem;
-        }
-        
-        .badge {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
+            width: 100%;
+            min-width: auto;
         }
     }
 </style>
@@ -275,4 +218,4 @@
     }
 </script>
 @endpush
-@endsection
+@endsection                        Waktu mengikuti <strong>server time</strong>
