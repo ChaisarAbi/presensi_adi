@@ -2,6 +2,116 @@
 
 @section('title', 'Generate QR Code')
 
+@push('styles')
+<style>
+    /* Fix padding overflow for QR generate page */
+    .container {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+    
+    @media (min-width: 768px) {
+        .container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+    }
+    
+    /* Mobile optimization */
+    @media (max-width: 768px) {
+        .container {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+        
+        .card {
+            margin-left: -0.5rem;
+            margin-right: -0.5rem;
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+        }
+        
+        .card-header {
+            border-radius: 0 !important;
+        }
+        
+        .card-body {
+            padding: 0.75rem;
+        }
+        
+        .row {
+            margin-left: -0.5rem;
+            margin-right: -0.5rem;
+        }
+        
+        .row > [class*="col-"] {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+        
+        .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        
+        .d-flex.gap-2 {
+            flex-wrap: wrap;
+        }
+        
+        .d-flex.gap-2 .btn {
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        code {
+            word-break: break-all;
+            font-size: 0.85rem;
+            padding: 0.25rem 0.5rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+            display: inline-block;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+    }
+    
+    /* Extra small devices */
+    @media (max-width: 575.98px) {
+        .container {
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+        }
+        
+        .card-body {
+            padding: 0.5rem;
+        }
+        
+        .alert {
+            margin: 0.5rem -0.5rem;
+            border-radius: 0;
+        }
+        
+        .d-flex.gap-2 .btn {
+            min-width: 100px;
+            font-size: 0.85rem;
+            padding: 0.5rem 0.25rem;
+        }
+        
+        h4.mb-0 {
+            font-size: 1.1rem;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="row justify-content-center">
     <div class="col-md-8">
