@@ -32,10 +32,18 @@ bootstrap/cache/     # Cache dengan permission 775
 # Update sistem
 sudo apt update && sudo apt upgrade -y
 
-# Install PHP 8.2+
-sudo apt install php8.2 php8.2-cli php8.2-fpm php8.2-mysql \
+# Install Apache2
+sudo apt install apache2 -y
+
+# Install PHP 8.2+ dengan modul Apache
+sudo apt install php8.2 libapache2-mod-php8.2 php8.2-cli php8.2-fpm php8.2-mysql \
 php8.2-mbstring php8.2-xml php8.2-curl php8.2-gd php8.2-zip \
 php8.2-bcmath php8.2-dom php8.2-fileinfo -y
+
+# Enable modul Apache yang diperlukan
+sudo a2enmod rewrite
+sudo a2enmod headers
+sudo a2enmod ssl
 
 # Install Composer
 curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
@@ -117,6 +125,14 @@ php artisan db:seed
 ```
 
 ### 7. Konfigurasi Web Server (Apache)
+
+#### 7.1 Buat File Virtual Host
+```bash
+# Buat file virtual host
+sudo nano /etc/apache2/sites-available/presensi.conf
+```
+
+#### 7.2 Isi File Virtual Host
 ```apache
 <VirtualHost *:80>
     ServerName presensi.aventra.my.id
@@ -127,11 +143,48 @@ php artisan db:seed
         Options Indexes FollowSymLinks
         AllowOverride All
         Require all granted
+        
+        # Laravel specific configurations
+        <IfModule mod_rewrite.c>
+            RewriteEngine On
+            RewriteCond %{REQUEST_FILENAME} !-d
+            RewriteCond %{REQUEST_FILENAME} !-f
+            RewriteRule ^ index.php [L]
+        </IfModule>
     </Directory>
 
+    # Error logging
     ErrorLog ${APACHE_LOG_DIR}/presensi_error.log
     CustomLog ${APACHE_LOG_DIR}/presensi_access.log combined
+    
+    # Security headers
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
 </VirtualHost>
+```
+
+#### 7.3 Aktifkan Virtual Host
+```bash
+# Nonaktifkan default site
+sudo a2dissite 000-default.conf
+
+# Aktifkan site presensi
+sudo a2ensite presensi.conf
+
+# Test konfigurasi Apache
+sudo apache2ctl configtest
+
+# Restart Apache
+sudo systemctl restart apache2
+
+# Enable Apache untuk start otomatis
+sudo systemctl enable apache2
+```
+
+#### 7.4 Cek Status Apache
+```bash
+sudo systemctl status apache2
 ```
 
 ### 8. Konfigurasi SSL (HTTPS)
