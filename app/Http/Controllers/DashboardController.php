@@ -16,6 +16,11 @@ class DashboardController extends Controller
      */
     public function admin(Request $request)
     {
+        // Handle keep-alive requests (just return success)
+        if ($request->has('keep_alive')) {
+            return response()->json(['status' => 'alive', 'timestamp' => now()->format('H:i:s')]);
+        }
+        
         $totalStudents = Student::count();
         $totalTeachers = User::where('role', 'guru')->count();
         $todayAttendances = Attendance::whereDate('tanggal', today())->count();
@@ -124,10 +129,15 @@ class DashboardController extends Controller
     /**
      * Dashboard for guru
      */
-    public function guru()
+    public function guru(Request $request)
     {
         $user = Auth::user();
         $kelas = $user->kelas ?? 'Semua Kelas'; // Assuming teacher has kelas field
+        
+        // Handle keep-alive requests (just return success)
+        if ($request->has('keep_alive')) {
+            return response()->json(['status' => 'alive', 'timestamp' => now()->format('H:i:s')]);
+        }
         
         // Get total students in the class
         $totalStudents = Student::when($kelas !== 'Semua Kelas', function ($query) use ($kelas) {
@@ -188,8 +198,13 @@ class DashboardController extends Controller
     /**
      * Dashboard for siswa/orang tua
      */
-    public function siswa()
+    public function siswa(Request $request)
     {
+        // Handle keep-alive requests (just return success)
+        if ($request->has('keep_alive')) {
+            return response()->json(['status' => 'alive', 'timestamp' => now()->format('H:i:s')]);
+        }
+        
         $user = Auth::user();
         $student = $user->student;
         
